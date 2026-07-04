@@ -1,0 +1,61 @@
+import prisma from "@/libs/prisma";
+import type { TokenPayload } from "@/utils/getUserFromToken";
+
+export async function getSaldoPendiente(prestamoId: string) {
+  const cuotas = await prisma.cuota.findMany({
+    where: { prestamoId, estado: { not: "PAGADA" } },
+    select: { montoTotal: true, montoPagado: true },
+  });
+  return cuotas.reduce((sum, c) => sum + (Number(c.montoTotal) - Number(c.montoPagado)), 0);
+}
+
+export async function getPrestamosRefinanciables(user: TokenPayload) {
+  const prestamos = await prisma.prestamo.findMany({
+    where: {
+      estado: "ACTIVO",
+      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+    },
+    include: {
+      cliente: { select: { id: true, nombre: true, apellido: true } },
+      cuotas: { select: { montoTotal: true, montoPagado: true, estado: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return prestamos
+    .map(({ cuotas, ...prestamo }) => {
+      const saldoPendiente = cuotas.reduce(
+        (sum, c) => (c.estado !== "PAGADA" ? sum + (Number(c.montoTotal) - Number(c.montoPagado)) : sum),
+        0
+      );
+      return { ...prestamo, saldoPendiente };
+    })
+    .filter((prestamo) => prestamo.saldoPendiente > 0);
+}
+
+export async function getRefinanciacionesForUser(user: TokenPayload, q?: string) {
+  return prisma.refinanciacion.findMany({
+    where: {
+      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...(q
+        ? {
+            prestamoAnterior: {
+              cliente: {
+                OR: [
+                  { nombre: { contains: q, mode: "insensitive" as const } },
+                  { apellido: { contains: q, mode: "insensitive" as const } },
+                ],
+              },
+            },
+          }
+        : {}),
+    },
+    include: {
+      prestamoAnterior: {
+        include: { cliente: { select: { id: true, nombre: true, apellido: true } } },
+      },
+      prestamoNuevo: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}

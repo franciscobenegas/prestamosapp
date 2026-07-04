@@ -1,0 +1,30 @@
+import { redirect } from "next/navigation";
+import { getUserFromToken } from "@/utils/getUserFromToken";
+import { getClientesForUser } from "@/lib/clientes";
+import { ClientesTable } from "./clientes-table";
+
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
+  const user = getUserFromToken();
+  if (!user) redirect("/auth/login");
+
+  const clientes = await getClientesForUser(user, searchParams.q);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Clientes</h1>
+        <p className="text-sm text-muted-foreground">
+          Gestioná los clientes y su información de contacto.
+        </p>
+      </div>
+      <ClientesTable
+        initialData={JSON.parse(JSON.stringify(clientes))}
+        initialQuery={searchParams.q ?? ""}
+      />
+    </div>
+  );
+}

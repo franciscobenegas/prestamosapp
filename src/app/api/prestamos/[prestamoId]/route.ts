@@ -1,0 +1,112 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import prisma from "@/libs/prisma";
+import { getUserFromToken } from "@/utils/getUserFromToken";
+import { auditDelete, auditUpdate } from "@/utils/auditoria";
+
+export const dynamic = "force-dynamic";
+
+const prestamoUpdateSchema = z.object({
+  estado: z.enum(["ACTIVO", "PAGADO", "ATRASADO", "CANCELADO"]),
+});
+
+async function getPrestamoScoped(prestamoId: string, user: { usuarioId: string; rol: string }) {
+  const prestamo = await prisma.prestamo.findUnique({ where: { id: prestamoId } });
+  if (!prestamo) return { prestamo: null, forbidden: false };
+  if (user.rol === "COBRADOR" && prestamo.usuarioId !== user.usuarioId) {
+    return { prestamo: null, forbidden: true };
+  }
+  return { prestamo, forbidden: false };
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { prestamoId: string } }
+) {
+  const user = getUserFromToken();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { prestamo, forbidden } = await getPrestamoScoped(params.prestamoId, user);
+  if (forbidden) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!prestamo) return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
+
+  const cliente = await prisma.cliente.findUnique({ where: { id: prestamo.clienteId } });
+  const cuotas = await prisma.cuota.findMany({
+    where: { prestamoId: prestamo.id },
+    orderBy: { numero: "asc" },
+  });
+
+  return NextResponse.json({ ...prestamo, cliente, cuotas });
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { prestamoId: string } }
+) {
+  const user = getUserFromToken();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { prestamo, forbidden } = await getPrestamoScoped(params.prestamoId, user);
+  if (forbidden) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!prestamo) return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
+
+  const body = await request.json();
+  const parsed = prestamoUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const actualizado = await auditUpdate(
+    "Prestamo",
+    user.usuarioId,
+    prestamo.id,
+    () => prisma.prestamo.findUnique({ where: { id: prestamo.id } }),
+    () => prisma.prestamo.update({ where: { id: prestamo.id }, data: parsed.data })
+  );
+
+  return NextResponse.json(actualizado);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { prestamoId: string } }
+) {
+  const user = getUserFromToken();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { prestamo, forbidden } = await getPrestamoScoped(params.prestamoId, user);
+  if (forbidden) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!prestamo) return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
+
+  const cantidadPagos = await prisma.pago.count({ where: { prestamoId: prestamo.id } });
+  if (cantidadPagos > 0) {
+    return NextResponse.json(
+      { error: "No se puede eliminar un préstamo con pagos registrados" },
+      { status: 409 }
+    );
+  }
+
+  const tieneRefinanciacion = await prisma.refinanciacion.findFirst({
+    where: { OR: [{ prestamoAnteriorId: prestamo.id }, { prestamoNuevoId: prestamo.id }] },
+  });
+  if (tieneRefinanciacion) {
+    return NextResponse.json(
+      { error: "No se puede eliminar un préstamo vinculado a una refinanciación" },
+      { status: 409 }
+    );
+  }
+
+  await auditDelete(
+    "Prestamo",
+    user.usuarioId,
+    prestamo.id,
+    () => prisma.prestamo.findUnique({ where: { id: prestamo.id } }),
+    () =>
+      prisma.$transaction([
+        prisma.cuota.deleteMany({ where: { prestamoId: prestamo.id } }),
+        prisma.prestamo.delete({ where: { id: prestamo.id } }),
+      ])
+  );
+
+  return NextResponse.json({ success: true });
+}
