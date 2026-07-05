@@ -55,7 +55,7 @@ export function ClienteDetailActions({
         Editar
       </Button>
       <Button
-        variant="outline"
+        variant="destructive"
         size="sm"
         onClick={handleDelete}
         disabled={hasPrestamos || deleting}

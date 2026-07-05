@@ -83,7 +83,7 @@ export function SimulacionDetailActions({ simulacion }: { simulacion: Simulacion
         <Pencil className="size-4" />
         Editar
       </Button>
-      <Button variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
+      <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
         <Trash2 className="size-4" />
         Eliminar
       </Button>
