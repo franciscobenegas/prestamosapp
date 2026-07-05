@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { generarCuotas, descomponerIva } from "@/lib/prestamos";
-import { formatMonto } from "@/lib/format";
+import { formatMonto, formatMontoInput, soloDigitos } from "@/lib/format";
 
 type PrestamoRefinanciable = {
   id: string;
@@ -199,7 +199,15 @@ export function RefinanciacionForm({
               <FormItem>
                 <FormLabel>Monto adicional a entregar (opcional)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="1" min="0" {...field} value={field.value as number} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatMontoInput(field.value)}
+                    onChange={(e) => field.onChange(soloDigitos(e.target.value))}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

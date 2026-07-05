@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { formatMonto } from "@/lib/format";
+import { formatMonto, formatMontoInput, soloDigitos } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -106,7 +106,15 @@ export function RegistrarPagoDialog({
                 <FormItem>
                   <FormLabel>Monto (saldo pendiente: {formatMonto(pendiente)})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="1" min="0" {...field} value={field.value as number} />
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatMontoInput(field.value)}
+                      onChange={(e) => field.onChange(soloDigitos(e.target.value))}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
