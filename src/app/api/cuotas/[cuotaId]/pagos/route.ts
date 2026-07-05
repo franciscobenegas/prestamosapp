@@ -11,6 +11,7 @@ const pagoSchema = z.object({
   monto: z.coerce.number().positive("El monto debe ser mayor a 0").transform(Math.round),
   metodoPago: z.enum(["EFECTIVO", "TRANSFERENCIA", "OTRO"]).default("EFECTIVO"),
   observacion: z.string().optional(),
+  idempotencyKey: z.string().optional(),
 });
 
 export async function POST(
@@ -43,10 +44,21 @@ export async function POST(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  if (parsed.data.idempotencyKey) {
+    const existente = await prisma.pago.findUnique({
+      where: { empresaId_idempotencyKey: { empresaId: user.empresaId, idempotencyKey: parsed.data.idempotencyKey } },
+    });
+    if (existente) return NextResponse.json(existente, { status: 200 });
+  }
+
   const pendiente = Number(cuota.montoTotal) - Number(cuota.montoPagado);
   if (parsed.data.monto > pendiente) {
     return NextResponse.json(
-      { error: `El monto supera el saldo pendiente de la cuota (${formatMonto(pendiente)})` },
+      {
+        error: `El monto supera el saldo pendiente de la cuota (${formatMonto(pendiente)})`,
+        code: "MONTO_EXCEDE_PENDIENTE",
+        pendiente,
+      },
       { status: 400 }
     );
   }
@@ -62,6 +74,7 @@ export async function POST(
           monto: parsed.data.monto,
           metodoPago: parsed.data.metodoPago,
           observacion: parsed.data.observacion,
+          idempotencyKey: parsed.data.idempotencyKey,
         },
       });
 

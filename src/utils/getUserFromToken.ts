@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export type TokenPayload = {
   usuarioId: string;
@@ -14,8 +14,18 @@ export function getUserFromToken(): TokenPayload | null {
     throw new Error("JWT_SECRET no está definido");
   }
 
+  // 1. Cookie (web)
   const cookieStore = cookies();
-  const rawToken = cookieStore.get("tokenPrestamos")?.value;
+  let rawToken = cookieStore.get("tokenPrestamos")?.value;
+
+  // 2. Authorization: Bearer (mobile)
+  if (!rawToken) {
+    const headerStore = headers();
+    const auth = headerStore.get("authorization") ?? headerStore.get("Authorization");
+    if (auth?.startsWith("Bearer ")) {
+      rawToken = auth.slice(7);
+    }
+  }
 
   if (!rawToken) return null;
 

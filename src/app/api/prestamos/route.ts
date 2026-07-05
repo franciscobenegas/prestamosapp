@@ -94,7 +94,12 @@ export async function POST(request: NextRequest) {
         })),
       });
 
-      return nuevo;
+      const cuotas = await tx.cuota.findMany({
+        where: { prestamoId: nuevo.id },
+        orderBy: { numero: "asc" },
+      });
+
+      return { ...nuevo, cuotas };
     })
   );
 

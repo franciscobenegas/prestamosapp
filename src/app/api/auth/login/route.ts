@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
+    token,
     user: {
       usuarioId: user.id,
       empresaId: user.empresaId,

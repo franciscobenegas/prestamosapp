@@ -159,22 +159,24 @@ model Cuota {
 }
 
 model Pago {
-  id          String     @id @default(cuid())
-  empresaId   String
-  cuotaId     String
-  prestamoId  String
-  usuarioId   String
-  monto       Decimal    @db.Decimal(12, 2)
-  fechaPago   DateTime   @default(now())
-  metodoPago  MetodoPago @default(EFECTIVO)
-  observacion String?
-  createdAt   DateTime   @default(now())
+  id             String     @id @default(cuid())
+  empresaId      String
+  cuotaId        String
+  prestamoId     String
+  usuarioId      String
+  monto          Decimal    @db.Decimal(12, 2)
+  fechaPago      DateTime   @default(now())
+  metodoPago     MetodoPago @default(EFECTIVO)
+  observacion    String?
+  idempotencyKey String?
+  createdAt      DateTime   @default(now())
 
   empresa  Empresa  @relation(fields: [empresaId], references: [id])
   cuota    Cuota    @relation(fields: [cuotaId], references: [id])
   prestamo Prestamo @relation(fields: [prestamoId], references: [id])
   usuario  Usuario  @relation(fields: [usuarioId], references: [id])
 
+  @@unique([empresaId, idempotencyKey])
   @@index([cuotaId])
   @@index([prestamoId])
   @@index([usuarioId])
