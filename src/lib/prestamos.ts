@@ -13,7 +13,7 @@ export type CuotaCalculada = {
 
 export type GenerarCuotasInput = {
   monto: number;
-  /** Tasa de interés por período de cuota, en porcentaje (ej. 10 = 10% por cuota). */
+  /** Tasa Nominal Anual (TNA), en porcentaje (ej. 10 = 10% anual). Se prorratea según la frecuencia de la cuota. */
   tasaInteres: number;
   cantidadCuotas: number;
   tipoInteres: TipoInteres;
@@ -24,6 +24,30 @@ export type GenerarCuotasInput = {
 /** Los importes se manejan en una moneda sin decimales: se redondean a números enteros. */
 function round0(value: number) {
   return Math.round(value);
+}
+
+/** Cantidad de períodos de esa frecuencia en un año, para prorratear la TNA a tasa periódica. */
+function periodosPorAnio(frecuencia: Frecuencia): number {
+  switch (frecuencia) {
+    case "DIARIA":
+      return 365;
+    case "SEMANAL":
+      return 52;
+    case "QUINCENAL":
+      return 24;
+    case "MENSUAL":
+      return 12;
+  }
+}
+
+/** IVA sobre los intereses de préstamos (Paraguay: 10%), ya incluido dentro de `montoInteres`. */
+export const IVA_INTERES = 0.1;
+
+/** Descompone un interés (montoInteres ya calculado, IVA incluido) en su parte neta y el IVA. */
+export function descomponerIva(montoInteresConIva: number) {
+  const iva = Math.round((montoInteresConIva * IVA_INTERES) / (1 + IVA_INTERES));
+  const interesNeto = montoInteresConIva - iva;
+  return { interesNeto, iva };
 }
 
 function sumarPeriodo(fecha: Date, frecuencia: Frecuencia, cantidad: number): Date {
@@ -148,7 +172,7 @@ export function generarCuotas(input: GenerarCuotasInput): CuotaCalculada[] {
     throw new Error("La cantidad de cuotas debe ser al menos 1");
   }
 
-  const tasaPeriodica = tasaInteres / 100;
+  const tasaPeriodica = tasaInteres / 100 / periodosPorAnio(frecuencia);
   const montoRedondeado = round0(monto);
 
   switch (tipoInteres) {

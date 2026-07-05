@@ -33,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { generarCuotas } from "@/lib/prestamos";
+import { generarCuotas, descomponerIva } from "@/lib/prestamos";
 import { formatMonto } from "@/lib/format";
 
 const simulacionSchema = z.object({
@@ -178,7 +178,7 @@ export function SimulacionForm({
               name="tasaInteres"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tasa por cuota (%)</FormLabel>
+                  <FormLabel>Tasa de interés anual - TNA (%)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" min="0" {...field} value={field.value as number} />
                   </FormControl>
@@ -284,13 +284,14 @@ export function SimulacionForm({
                   <TableHead>Vencimiento</TableHead>
                   <TableHead>Capital</TableHead>
                   <TableHead>Interés</TableHead>
+                  <TableHead>IVA</TableHead>
                   <TableHead>Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {simulacion.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Completá los datos para ver la simulación.
                     </TableCell>
                   </TableRow>
@@ -301,6 +302,7 @@ export function SimulacionForm({
                     <TableCell>{format(cuota.fechaVencimiento, "dd/MM/yyyy")}</TableCell>
                     <TableCell>{formatMonto(cuota.montoCapital)}</TableCell>
                     <TableCell>{formatMonto(cuota.montoInteres)}</TableCell>
+                    <TableCell>{formatMonto(descomponerIva(cuota.montoInteres).iva)}</TableCell>
                     <TableCell>{formatMonto(cuota.montoTotal)}</TableCell>
                   </TableRow>
                 ))}

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
-import { generarCuotas } from "@/lib/prestamos";
+import { generarCuotas, descomponerIva } from "@/lib/prestamos";
 import { formatMonto } from "@/lib/format";
 import {
   Table,
@@ -69,6 +69,7 @@ export default async function SimulacionDetailPage({
               <TableHead>Vencimiento</TableHead>
               <TableHead>Capital</TableHead>
               <TableHead>Interés</TableHead>
+              <TableHead>IVA</TableHead>
               <TableHead>Total</TableHead>
             </TableRow>
           </TableHeader>
@@ -79,6 +80,7 @@ export default async function SimulacionDetailPage({
                 <TableCell>{cuota.fechaVencimiento.toLocaleDateString("es-AR")}</TableCell>
                 <TableCell>{formatMonto(cuota.montoCapital)}</TableCell>
                 <TableCell>{formatMonto(cuota.montoInteres)}</TableCell>
+                <TableCell>{formatMonto(descomponerIva(cuota.montoInteres).iva)}</TableCell>
                 <TableCell>{formatMonto(cuota.montoTotal)}</TableCell>
               </TableRow>
             ))}
