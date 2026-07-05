@@ -20,7 +20,9 @@ export async function middleware(request: NextRequest) {
     }
 
     if (
-      (pathname.startsWith("/usuarios") || pathname.startsWith("/auditoria")) &&
+      (pathname.startsWith("/usuarios") ||
+        pathname.startsWith("/auditoria") ||
+        pathname.startsWith("/empresa")) &&
       payload.rol !== "ADMIN"
     ) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -45,6 +47,7 @@ export const config = {
     "/reportes/:path*",
     "/usuarios/:path*",
     "/auditoria/:path*",
+    "/empresa/:path*",
     "/auth/login",
   ],
 };

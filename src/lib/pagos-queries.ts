@@ -2,6 +2,7 @@ import { endOfDay, startOfDay } from "date-fns";
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
 import { toCountMap } from "@/lib/facets";
+import { scopeEmpresa } from "@/lib/scope";
 
 export type PagosFilters = {
   metodoPago?: string[];
@@ -14,7 +15,7 @@ export type PagosFilters = {
 export async function getPagosForUser(user: TokenPayload, filters: PagosFilters = {}) {
   return prisma.pago.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(filters.metodoPago?.length ? { metodoPago: { in: filters.metodoPago as never[] } } : {}),
       ...(user.rol === "ADMIN" && filters.cobradorId?.length
         ? { usuarioId: { in: filters.cobradorId } }
@@ -50,7 +51,7 @@ export async function getPagosForUser(user: TokenPayload, filters: PagosFilters 
 }
 
 export async function getPagosFacetCounts(user: TokenPayload) {
-  const scope = user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
+  const scope = scopeEmpresa(user);
 
   const porMetodo = await prisma.pago.groupBy({
     by: ["metodoPago"],
@@ -66,10 +67,11 @@ export async function getPagosFacetCounts(user: TokenPayload) {
 
   const porCobrador = await prisma.pago.groupBy({
     by: ["usuarioId"],
+    where: { empresaId: user.empresaId },
     _count: { _all: true },
   });
   const usuarios = await prisma.usuario.findMany({
-    where: { id: { in: porCobrador.map((r) => r.usuarioId) } },
+    where: { id: { in: porCobrador.map((r) => r.usuarioId) }, empresaId: user.empresaId },
     select: { id: true, nombre: true },
   });
 

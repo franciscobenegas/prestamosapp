@@ -9,6 +9,7 @@ export default async function UsuariosPage() {
   if (user.rol !== "ADMIN") redirect("/dashboard");
 
   const usuarios = await prisma.usuario.findMany({
+    where: { empresaId: user.empresaId },
     select: { id: true, nombre: true, email: true, rol: true, activo: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });

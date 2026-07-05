@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
+import { scopeEmpresa } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const pagos = await prisma.pago.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(prestamoId ? { prestamoId } : {}),
       ...(clienteId ? { prestamo: { clienteId } } : {}),
     },

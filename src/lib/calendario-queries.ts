@@ -1,6 +1,7 @@
 import { endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
+import { scopeEmpresa } from "@/lib/scope";
 
 export async function getCuotasDelMes(user: TokenPayload, mesDeReferencia: Date) {
   const inicioMes = startOfMonth(mesDeReferencia);
@@ -11,7 +12,7 @@ export async function getCuotasDelMes(user: TokenPayload, mesDeReferencia: Date)
   return prisma.cuota.findMany({
     where: {
       fechaVencimiento: { gte: inicioGrilla, lte: finGrilla },
-      prestamo: user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {},
+      prestamo: scopeEmpresa(user),
     },
     include: {
       prestamo: {

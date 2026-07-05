@@ -1,6 +1,7 @@
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
 import { toCountMap } from "@/lib/facets";
+import { scopeEmpresa } from "@/lib/scope";
 
 export type SimulacionesFilters = {
   tipoInteres?: string[];
@@ -11,7 +12,7 @@ export type SimulacionesFilters = {
 export async function getSimulacionesForUser(user: TokenPayload, filters: SimulacionesFilters = {}) {
   return prisma.simulacion.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(filters.tipoInteres?.length ? { tipoInteres: { in: filters.tipoInteres as never[] } } : {}),
       ...(filters.frecuencia?.length ? { frecuencia: { in: filters.frecuencia as never[] } } : {}),
       ...(filters.q ? { clienteNombre: { contains: filters.q, mode: "insensitive" as const } } : {}),
@@ -21,7 +22,7 @@ export async function getSimulacionesForUser(user: TokenPayload, filters: Simula
 }
 
 export async function getSimulacionesFacetCounts(user: TokenPayload) {
-  const scope = user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
+  const scope = scopeEmpresa(user);
 
   const porTipo = await prisma.simulacion.groupBy({
     by: ["tipoInteres"],

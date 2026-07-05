@@ -1,10 +1,11 @@
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
+import { scopeEmpresa } from "@/lib/scope";
 
 export async function getClientesForUser(user: TokenPayload, q?: string) {
   return prisma.cliente.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(q
         ? {
             OR: [

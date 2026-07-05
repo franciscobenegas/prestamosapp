@@ -1,4 +1,5 @@
 import prisma from "@/libs/prisma";
+import type { TokenPayload } from "@/utils/getUserFromToken";
 import { toCountMap } from "@/lib/facets";
 
 export type AuditoriaFilters = {
@@ -7,9 +8,10 @@ export type AuditoriaFilters = {
   q?: string;
 };
 
-export async function getAuditorias(filters: AuditoriaFilters = {}) {
+export async function getAuditorias(user: TokenPayload, filters: AuditoriaFilters = {}) {
   return prisma.auditoria.findMany({
     where: {
+      empresaId: user.empresaId,
       ...(filters.tabla?.length ? { tabla: { in: filters.tabla } } : {}),
       ...(filters.accion?.length ? { accion: { in: filters.accion } } : {}),
       ...(filters.q
@@ -22,13 +24,15 @@ export async function getAuditorias(filters: AuditoriaFilters = {}) {
   });
 }
 
-export async function getAuditoriaFacetCounts() {
+export async function getAuditoriaFacetCounts(user: TokenPayload) {
   const porTabla = await prisma.auditoria.groupBy({
     by: ["tabla"],
+    where: { empresaId: user.empresaId },
     _count: { _all: true },
   });
   const porAccion = await prisma.auditoria.groupBy({
     by: ["accion"],
+    where: { empresaId: user.empresaId },
     _count: { _all: true },
   });
 

@@ -1,10 +1,7 @@
 import { differenceInCalendarDays, startOfDay } from "date-fns";
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
-
-function scopeUsuario(user: TokenPayload) {
-  return user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
-}
+import { scopeEmpresa as scopeUsuario } from "@/lib/scope";
 
 // ---------- Cartera ----------
 
@@ -74,7 +71,7 @@ export async function getReporteCartera(user: TokenPayload): Promise<ReporteCart
   }
 
   const usuarios = await prisma.usuario.findMany({
-    where: { id: { in: Array.from(porCobradorMap.keys()) } },
+    where: { id: { in: Array.from(porCobradorMap.keys()) }, empresaId: user.empresaId },
     select: { id: true, nombre: true },
   });
   const nombrePorId = new Map(usuarios.map((u) => [u.id, u.nombre]));
@@ -154,7 +151,7 @@ export async function getReporteCobrosPorCobrador(
   }
 
   const usuarios = await prisma.usuario.findMany({
-    where: { id: { in: Array.from(porUsuarioMap.keys()) } },
+    where: { id: { in: Array.from(porUsuarioMap.keys()) }, empresaId: user.empresaId },
     select: { id: true, nombre: true },
   });
   const nombrePorId = new Map(usuarios.map((u) => [u.id, u.nombre]));

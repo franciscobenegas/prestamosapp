@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 
 const registroSchema = z
   .object({
+    empresaNombre: z.string().min(1, "El nombre de la empresa es obligatorio"),
     nombre: z.string().min(1, "El nombre es obligatorio"),
     email: z.string().email("Email inválido"),
     password: z
@@ -45,7 +46,7 @@ export function RegistroForm({
     formState: { errors },
   } = useForm<RegistroValues>({
     resolver: zodResolver(registroSchema),
-    defaultValues: { nombre: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { empresaNombre: "", nombre: "", email: "", password: "", confirmPassword: "" },
   });
 
   const password = watch("password");
@@ -65,7 +66,7 @@ export function RegistroForm({
         return;
       }
 
-      toast.success("Cuenta creada. Un administrador debe activarla antes de que puedas ingresar.");
+      toast.success("Empresa y cuenta creadas. Ya podés ingresar.");
       router.push("/auth/login");
     } catch {
       toast.error("Error de conexión con el servidor");
@@ -81,14 +82,21 @@ export function RegistroForm({
       {...props}
     >
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Creá tu cuenta</h1>
+        <h1 className="text-2xl font-bold">Creá tu empresa</h1>
         <p className="text-balance text-sm text-muted-foreground">
-          Un administrador deberá activarla antes de que puedas ingresar
+          Vas a ser el administrador de tu propia empresa en el sistema
         </p>
       </div>
       <div className="grid gap-6">
         <div className="grid gap-2">
-          <Label htmlFor="nombre">Nombre</Label>
+          <Label htmlFor="empresaNombre">Nombre de tu empresa</Label>
+          <Input id="empresaNombre" placeholder="Mi Empresa S.A." {...register("empresaNombre")} />
+          {errors.empresaNombre && (
+            <p className="text-sm text-destructive">{errors.empresaNombre.message}</p>
+          )}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="nombre">Tu nombre</Label>
           <Input id="nombre" placeholder="Nombre y apellido" {...register("nombre")} />
           {errors.nombre && (
             <p className="text-sm text-destructive">{errors.nombre.message}</p>

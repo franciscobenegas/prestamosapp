@@ -1,5 +1,6 @@
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
+import { scopeEmpresa } from "@/lib/scope";
 
 export async function getSaldoPendiente(prestamoId: string) {
   const cuotas = await prisma.cuota.findMany({
@@ -13,7 +14,7 @@ export async function getPrestamosRefinanciables(user: TokenPayload) {
   const prestamos = await prisma.prestamo.findMany({
     where: {
       estado: "ACTIVO",
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
     },
     include: {
       cliente: { select: { id: true, nombre: true, apellido: true } },
@@ -36,7 +37,7 @@ export async function getPrestamosRefinanciables(user: TokenPayload) {
 export async function getRefinanciacionesForUser(user: TokenPayload, q?: string) {
   return prisma.refinanciacion.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(q
         ? {
             prestamoAnterior: {

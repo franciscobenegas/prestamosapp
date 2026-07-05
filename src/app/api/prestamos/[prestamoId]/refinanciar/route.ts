@@ -26,7 +26,7 @@ export async function POST(
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const prestamoAnterior = await prisma.prestamo.findUnique({ where: { id: params.prestamoId } });
-  if (!prestamoAnterior) {
+  if (!prestamoAnterior || prestamoAnterior.empresaId !== user.empresaId) {
     return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
   }
   if (user.rol === "COBRADOR" && prestamoAnterior.usuarioId !== user.usuarioId) {
@@ -68,6 +68,7 @@ export async function POST(
   const resultado = await prisma.$transaction(async (tx) => {
     const prestamoNuevo = await tx.prestamo.create({
       data: {
+        empresaId: user.empresaId,
         clienteId: prestamoAnterior.clienteId,
         usuarioId: prestamoAnterior.usuarioId,
         monto: montoNuevo,
@@ -97,6 +98,7 @@ export async function POST(
 
     const refinanciacion = await tx.refinanciacion.create({
       data: {
+        empresaId: user.empresaId,
         prestamoAnteriorId: prestamoAnterior.id,
         prestamoNuevoId: prestamoNuevo.id,
         usuarioId: user.usuarioId,
@@ -109,7 +111,7 @@ export async function POST(
     return { prestamoNuevo, refinanciacion };
   });
 
-  await auditar("Refinanciacion", "CREATE", user.usuarioId, {
+  await auditar("Refinanciacion", "CREATE", user.empresaId, user.usuarioId, {
     registroId: resultado.refinanciacion.id,
     newValues: {
       ...resultado.refinanciacion,

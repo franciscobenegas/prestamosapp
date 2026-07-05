@@ -13,7 +13,7 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const simulacion = await prisma.simulacion.findUnique({ where: { id: params.simulacionId } });
-  if (!simulacion) {
+  if (!simulacion || simulacion.empresaId !== user.empresaId) {
     return NextResponse.json({ error: "Simulación no encontrada" }, { status: 404 });
   }
   if (user.rol === "COBRADOR" && simulacion.usuarioId !== user.usuarioId) {

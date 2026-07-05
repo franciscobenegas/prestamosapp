@@ -43,7 +43,7 @@ export default async function PrestamoDetailPage({
       },
     },
   });
-  if (!prestamo) notFound();
+  if (!prestamo || prestamo.empresaId !== user.empresaId) notFound();
   if (user.rol === "COBRADOR" && prestamo.usuarioId !== user.usuarioId) notFound();
 
   const cliente = await prisma.cliente.findUnique({ where: { id: prestamo.clienteId } });

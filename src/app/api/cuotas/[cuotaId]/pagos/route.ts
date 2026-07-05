@@ -24,7 +24,9 @@ export async function POST(
   if (!cuota) return NextResponse.json({ error: "Cuota no encontrada" }, { status: 404 });
 
   const prestamo = await prisma.prestamo.findUnique({ where: { id: cuota.prestamoId } });
-  if (!prestamo) return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
+  if (!prestamo || prestamo.empresaId !== user.empresaId) {
+    return NextResponse.json({ error: "Préstamo no encontrado" }, { status: 404 });
+  }
   if (user.rol === "COBRADOR" && prestamo.usuarioId !== user.usuarioId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
@@ -49,10 +51,11 @@ export async function POST(
     );
   }
 
-  const pago = await auditCreate("Pago", user.usuarioId, () =>
+  const pago = await auditCreate("Pago", user.empresaId, user.usuarioId, () =>
     prisma.$transaction(async (tx) => {
       const nuevoPago = await tx.pago.create({
         data: {
+          empresaId: user.empresaId,
           cuotaId: cuota.id,
           prestamoId: prestamo.id,
           usuarioId: user.usuarioId,

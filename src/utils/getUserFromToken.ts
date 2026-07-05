@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 export type TokenPayload = {
   usuarioId: string;
+  empresaId: string;
   email: string;
   nombre: string;
   rol: "ADMIN" | "COBRADOR";

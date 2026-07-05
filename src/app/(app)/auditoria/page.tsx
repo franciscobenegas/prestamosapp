@@ -22,8 +22,8 @@ export default async function AuditoriaPage({
     q: searchParams.q,
   };
 
-  const auditorias = await getAuditorias(filters);
-  const facetCounts = await getAuditoriaFacetCounts();
+  const auditorias = await getAuditorias(user, filters);
+  const facetCounts = await getAuditoriaFacetCounts(user);
 
   return (
     <div className="space-y-6">

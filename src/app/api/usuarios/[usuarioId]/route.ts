@@ -24,7 +24,9 @@ export async function PUT(
   if (user.rol !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const existente = await prisma.usuario.findUnique({ where: { id: params.usuarioId } });
-  if (!existente) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+  if (!existente || existente.empresaId !== user.empresaId) {
+    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+  }
 
   const body = await request.json();
   const parsed = usuarioUpdateSchema.safeParse(body);
@@ -43,6 +45,7 @@ export async function PUT(
 
   const actualizado = await auditUpdate(
     "Usuario",
+    user.empresaId,
     user.usuarioId,
     existente.id,
     async () => {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/libs/prisma";
-import { getUserFromToken } from "@/utils/getUserFromToken";
+import { getUserFromToken, type TokenPayload } from "@/utils/getUserFromToken";
 import { auditDelete, auditUpdate } from "@/utils/auditoria";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +10,9 @@ const prestamoUpdateSchema = z.object({
   estado: z.enum(["ACTIVO", "PAGADO", "ATRASADO", "CANCELADO"]),
 });
 
-async function getPrestamoScoped(prestamoId: string, user: { usuarioId: string; rol: string }) {
+async function getPrestamoScoped(prestamoId: string, user: TokenPayload) {
   const prestamo = await prisma.prestamo.findUnique({ where: { id: prestamoId } });
-  if (!prestamo) return { prestamo: null, forbidden: false };
+  if (!prestamo || prestamo.empresaId !== user.empresaId) return { prestamo: null, forbidden: false };
   if (user.rol === "COBRADOR" && prestamo.usuarioId !== user.usuarioId) {
     return { prestamo: null, forbidden: true };
   }
@@ -58,6 +58,7 @@ export async function PUT(
 
   const actualizado = await auditUpdate(
     "Prestamo",
+    user.empresaId,
     user.usuarioId,
     prestamo.id,
     () => prisma.prestamo.findUnique({ where: { id: prestamo.id } }),
@@ -98,6 +99,7 @@ export async function DELETE(
 
   await auditDelete(
     "Prestamo",
+    user.empresaId,
     user.usuarioId,
     prestamo.id,
     () => prisma.prestamo.findUnique({ where: { id: prestamo.id } }),

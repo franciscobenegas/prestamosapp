@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
 import { auditCreate } from "@/utils/auditoria";
+import { scopeEmpresa } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const simulaciones = await prisma.simulacion.findMany({
-    where: user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {},
+    where: scopeEmpresa(user),
     orderBy: { createdAt: "desc" },
   });
 
@@ -41,9 +42,14 @@ export async function POST(request: NextRequest) {
 
   const { clienteEmail, ...rest } = parsed.data;
 
-  const nueva = await auditCreate("Simulacion", user.usuarioId, () =>
+  const nueva = await auditCreate("Simulacion", user.empresaId, user.usuarioId, () =>
     prisma.simulacion.create({
-      data: { ...rest, clienteEmail: clienteEmail || undefined, usuarioId: user.usuarioId },
+      data: {
+        ...rest,
+        empresaId: user.empresaId,
+        clienteEmail: clienteEmail || undefined,
+        usuarioId: user.usuarioId,
+      },
     })
   );
 

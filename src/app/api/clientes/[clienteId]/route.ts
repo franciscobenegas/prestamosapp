@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/libs/prisma";
-import { getUserFromToken } from "@/utils/getUserFromToken";
+import { getUserFromToken, type TokenPayload } from "@/utils/getUserFromToken";
 import { auditDelete, auditUpdate } from "@/utils/auditoria";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +16,9 @@ const clienteUpdateSchema = z.object({
   usuarioId: z.string().optional(),
 });
 
-async function getClienteScoped(clienteId: string, user: { usuarioId: string; rol: string }) {
+async function getClienteScoped(clienteId: string, user: TokenPayload) {
   const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
-  if (!cliente) return { cliente: null, forbidden: false };
+  if (!cliente || cliente.empresaId !== user.empresaId) return { cliente: null, forbidden: false };
   if (user.rol === "COBRADOR" && cliente.usuarioId !== user.usuarioId) {
     return { cliente: null, forbidden: true };
   }
@@ -70,6 +70,7 @@ export async function PUT(
 
   const actualizado = await auditUpdate(
     "Cliente",
+    user.empresaId,
     user.usuarioId,
     cliente.id,
     () => prisma.cliente.findUnique({ where: { id: cliente.id } }),
@@ -102,6 +103,7 @@ export async function DELETE(
 
   await auditDelete(
     "Cliente",
+    user.empresaId,
     user.usuarioId,
     cliente.id,
     () => prisma.cliente.findUnique({ where: { id: cliente.id } }),

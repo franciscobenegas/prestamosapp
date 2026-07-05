@@ -5,6 +5,7 @@ type Accion = "CREATE" | "UPDATE" | "DELETE";
 export async function auditar(
   tabla: string,
   accion: Accion,
+  empresaId: string,
   usuarioId: string,
   options: {
     registroId: string;
@@ -23,6 +24,7 @@ export async function auditar(
       newValues: options.newValues
         ? JSON.stringify(options.newValues)
         : undefined,
+      empresaId,
       usuarioId,
     },
   });
@@ -30,11 +32,12 @@ export async function auditar(
 
 export async function auditCreate<T>(
   tabla: string,
+  empresaId: string,
   usuarioId: string,
   createFn: () => Promise<T & { id: string }>
 ): Promise<T> {
   const nuevo = await createFn();
-  await auditar(tabla, "CREATE", usuarioId, {
+  await auditar(tabla, "CREATE", empresaId, usuarioId, {
     registroId: nuevo.id,
     newValues: nuevo,
   });
@@ -43,6 +46,7 @@ export async function auditCreate<T>(
 
 export async function auditUpdate<T>(
   tabla: string,
+  empresaId: string,
   usuarioId: string,
   id: string,
   getOldFn: () => Promise<T | null>,
@@ -50,7 +54,7 @@ export async function auditUpdate<T>(
 ): Promise<T> {
   const oldRecord = await getOldFn();
   const updated = await updateFn();
-  await auditar(tabla, "UPDATE", usuarioId, {
+  await auditar(tabla, "UPDATE", empresaId, usuarioId, {
     registroId: id,
     oldValues: oldRecord,
     newValues: updated,
@@ -60,6 +64,7 @@ export async function auditUpdate<T>(
 
 export async function auditDelete<T>(
   tabla: string,
+  empresaId: string,
   usuarioId: string,
   id: string,
   getOldFn: () => Promise<T | null>,
@@ -67,7 +72,7 @@ export async function auditDelete<T>(
 ): Promise<void> {
   const oldRecord = await getOldFn();
   await deleteFn();
-  await auditar(tabla, "DELETE", usuarioId, {
+  await auditar(tabla, "DELETE", empresaId, usuarioId, {
     registroId: id,
     oldValues: oldRecord,
   });

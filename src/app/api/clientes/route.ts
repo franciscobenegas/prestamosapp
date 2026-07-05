@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
 import { auditCreate } from "@/utils/auditoria";
+import { scopeEmpresa } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const clientes = await prisma.cliente.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(q
         ? {
             OR: [
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   const { email, usuarioId, ...rest } = parsed.data;
 
   const existente = await prisma.cliente.findUnique({
-    where: { documento: rest.documento },
+    where: { empresaId_documento: { empresaId: user.empresaId, documento: rest.documento } },
   });
   if (existente) {
     return NextResponse.json(
@@ -66,9 +67,9 @@ export async function POST(request: NextRequest) {
 
   const asignadoA = user.rol === "ADMIN" ? usuarioId ?? user.usuarioId : user.usuarioId;
 
-  const nuevo = await auditCreate("Cliente", user.usuarioId, () =>
+  const nuevo = await auditCreate("Cliente", user.empresaId, user.usuarioId, () =>
     prisma.cliente.create({
-      data: { ...rest, email: email || undefined, usuarioId: asignadoA },
+      data: { ...rest, empresaId: user.empresaId, email: email || undefined, usuarioId: asignadoA },
     })
   );
 

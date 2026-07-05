@@ -1,6 +1,7 @@
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
 import { toCountMap } from "@/lib/facets";
+import { scopeEmpresa } from "@/lib/scope";
 
 export type PrestamosFilters = {
   estado?: string[];
@@ -13,7 +14,7 @@ export type PrestamosFilters = {
 export async function getPrestamosForUser(user: TokenPayload, filters: PrestamosFilters = {}) {
   return prisma.prestamo.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(filters.estado?.length ? { estado: { in: filters.estado as never[] } } : {}),
       ...(filters.tipoInteres?.length ? { tipoInteres: { in: filters.tipoInteres as never[] } } : {}),
       ...(filters.frecuencia?.length ? { frecuencia: { in: filters.frecuencia as never[] } } : {}),
@@ -35,7 +36,7 @@ export async function getPrestamosForUser(user: TokenPayload, filters: Prestamos
 }
 
 export async function getPrestamosFacetCounts(user: TokenPayload) {
-  const scope = user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
+  const scope = scopeEmpresa(user);
 
   const porEstado = await prisma.prestamo.groupBy({
     by: ["estado"],

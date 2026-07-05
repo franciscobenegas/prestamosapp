@@ -4,6 +4,7 @@ import { hashPassword } from "@/utils/hash";
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? "admin@prestamos.local";
   const password = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  const empresaNombre = process.env.SEED_EMPRESA_NOMBRE ?? "Empresa Demo";
 
   const existing = await prisma.usuario.findUnique({ where: { email } });
   if (existing) {
@@ -11,8 +12,11 @@ async function main() {
     return;
   }
 
+  const empresa = await prisma.empresa.create({ data: { nombre: empresaNombre } });
+
   await prisma.usuario.create({
     data: {
+      empresaId: empresa.id,
       nombre: "Administrador",
       email,
       password: await hashPassword(password),
@@ -21,6 +25,7 @@ async function main() {
     },
   });
 
+  console.log(`Empresa creada: ${empresaNombre}`);
   console.log(`Usuario ADMIN creado: ${email} / ${password}`);
 }
 

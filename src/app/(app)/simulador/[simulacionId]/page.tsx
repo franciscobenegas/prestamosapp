@@ -22,7 +22,7 @@ export default async function SimulacionDetailPage({
   if (!user) redirect("/auth/login");
 
   const simulacion = await prisma.simulacion.findUnique({ where: { id: params.simulacionId } });
-  if (!simulacion) notFound();
+  if (!simulacion || simulacion.empresaId !== user.empresaId) notFound();
   if (user.rol === "COBRADOR" && simulacion.usuarioId !== user.usuarioId) notFound();
 
   const cuotas = generarCuotas({

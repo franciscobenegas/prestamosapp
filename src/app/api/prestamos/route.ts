@@ -4,6 +4,7 @@ import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
 import { auditCreate } from "@/utils/auditoria";
 import { generarCuotas } from "@/lib/prestamos";
+import { scopeEmpresa } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   const prestamos = await prisma.prestamo.findMany({
     where: {
-      ...(user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {}),
+      ...scopeEmpresa(user),
       ...(clienteId ? { clienteId } : {}),
       ...(estado ? { estado: estado as never } : {}),
     },
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
   const data = parsed.data;
 
   const cliente = await prisma.cliente.findUnique({ where: { id: data.clienteId } });
-  if (!cliente) {
+  if (!cliente || cliente.empresaId !== user.empresaId) {
     return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
   }
   if (user.rol === "COBRADOR" && cliente.usuarioId !== user.usuarioId) {
@@ -66,10 +67,11 @@ export async function POST(request: NextRequest) {
     fechaInicio: data.fechaInicio,
   });
 
-  const prestamo = await auditCreate("Prestamo", user.usuarioId, () =>
+  const prestamo = await auditCreate("Prestamo", user.empresaId, user.usuarioId, () =>
     prisma.$transaction(async (tx) => {
       const nuevo = await tx.prestamo.create({
         data: {
+          empresaId: user.empresaId,
           clienteId: data.clienteId,
           usuarioId: cliente.usuarioId,
           monto: data.monto,

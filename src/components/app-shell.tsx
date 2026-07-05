@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ShieldCheck,
   FileBarChart,
+  Building2,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { href: "/reportes", label: "Reportes", icon: FileBarChart },
   { href: "/usuarios", label: "Usuarios", icon: UserCog, adminOnly: true },
   { href: "/auditoria", label: "Auditoría", icon: ShieldCheck, adminOnly: true },
+  { href: "/empresa", label: "Empresa", icon: Building2, adminOnly: true },
 ];
 
 const SIDEBAR_STORAGE_KEY = "sidebar-collapsed";

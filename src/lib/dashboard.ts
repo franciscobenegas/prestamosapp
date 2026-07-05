@@ -1,10 +1,11 @@
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, addDays, format } from "date-fns";
 import prisma from "@/libs/prisma";
 import type { TokenPayload } from "@/utils/getUserFromToken";
+import { scopeEmpresa } from "@/lib/scope";
 
 export async function getDashboardStats(user: TokenPayload) {
-  const scopePrestamo = user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
-  const scopePago = user.rol === "COBRADOR" ? { usuarioId: user.usuarioId } : {};
+  const scopePrestamo = scopeEmpresa(user);
+  const scopePago = scopeEmpresa(user);
 
   const hoy = new Date();
   const inicioHoy = startOfDay(hoy);

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     {
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
       usuarioId: user.id,
+      empresaId: user.empresaId,
       email: user.email,
       nombre: user.nombre,
       rol: user.rol,
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     success: true,
     user: {
       usuarioId: user.id,
+      empresaId: user.empresaId,
       email: user.email,
       nombre: user.nombre,
       rol: user.rol,

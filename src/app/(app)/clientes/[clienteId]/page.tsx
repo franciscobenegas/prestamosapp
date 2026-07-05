@@ -35,7 +35,7 @@ export default async function ClienteDetailPage({
     include: { usuario: { select: { nombre: true } } },
   });
 
-  if (!cliente) notFound();
+  if (!cliente || cliente.empresaId !== user.empresaId) notFound();
   if (user.rol === "COBRADOR" && cliente.usuarioId !== user.usuarioId) notFound();
 
   const prestamos = await prisma.prestamo.findMany({
