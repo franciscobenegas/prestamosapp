@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -10,7 +11,6 @@ import {
   Receipt,
   UserCog,
   LogOut,
-  Landmark,
   Calculator,
   CalendarDays,
   RefreshCw,
@@ -179,8 +179,8 @@ export function AppShell({
           >
             {!collapsed && (
               <span className="flex items-center gap-2 font-semibold">
-                <Landmark className="size-5 shrink-0" />
-                Préstamos
+                <Image src="/icon-square.png" alt="" width={20} height={20} className="shrink-0 rounded-md" />
+                PRESTO
               </span>
             )}
             <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleCollapsed}>
@@ -199,8 +199,8 @@ export function AppShell({
           <SheetContent side="left" className="flex w-60 flex-col gap-0 p-0">
             <SheetHeader className="h-16 flex-row items-center justify-start space-y-0 border-b px-4">
               <SheetTitle className="flex items-center gap-2 text-base font-semibold">
-                <Landmark className="size-5 shrink-0" />
-                Préstamos
+                <Image src="/icon-square.png" alt="" width={20} height={20} className="shrink-0 rounded-md" />
+                PRESTO
               </SheetTitle>
             </SheetHeader>
             <SidebarNav
@@ -220,8 +220,8 @@ export function AppShell({
                 <Menu className="size-5" />
               </Button>
               <div className="flex items-center gap-2 font-semibold">
-                <Landmark className="size-5" />
-                Préstamos
+                <Image src="/icon-square.png" alt="" width={20} height={20} className="rounded-md" />
+                PRESTO
               </div>
             </div>
             <ThemeToggle collapsed />

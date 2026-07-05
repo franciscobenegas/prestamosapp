@@ -16,7 +16,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Gestión de Préstamos",
+  title: "PRESTO — Gestión de Préstamos",
   description: "Gestión de clientes, préstamos, cuotas y cobros",
 };
 
