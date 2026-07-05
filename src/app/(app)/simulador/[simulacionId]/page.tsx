@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
-import { generarCuotas, descomponerIva } from "@/lib/prestamos";
+import { generarCuotas } from "@/lib/prestamos";
 import { formatMonto } from "@/lib/format";
 import {
   Table,
@@ -28,11 +28,13 @@ export default async function SimulacionDetailPage({
   const cuotas = generarCuotas({
     monto: Number(simulacion.monto),
     tasaInteres: Number(simulacion.tasaInteres),
+    iva: Number(simulacion.iva),
     cantidadCuotas: simulacion.cantidadCuotas,
     tipoInteres: simulacion.tipoInteres,
     frecuencia: simulacion.frecuencia,
     fechaInicio: simulacion.fechaInicio,
   });
+  const montoFinanciado = Math.round(Number(simulacion.monto) * (1 + Number(simulacion.iva) / 100));
   const totalCuotas = cuotas.reduce((sum, c) => sum + c.montoTotal, 0);
 
   return (
@@ -43,6 +45,7 @@ export default async function SimulacionDetailPage({
           <p className="text-sm text-muted-foreground">
             {formatMonto(Number(simulacion.monto))} en {simulacion.cantidadCuotas} cuotas ·{" "}
             {simulacion.tipoInteres} · {simulacion.frecuencia}
+            {Number(simulacion.iva) > 0 && <> · IVA {Number(simulacion.iva)}% financiado</>}
             {simulacion.clienteEmail && <> · {simulacion.clienteEmail}</>}
           </p>
         </div>
@@ -53,6 +56,7 @@ export default async function SimulacionDetailPage({
             clienteEmail: simulacion.clienteEmail ?? "",
             monto: Number(simulacion.monto),
             tasaInteres: Number(simulacion.tasaInteres),
+            iva: Number(simulacion.iva),
             cantidadCuotas: simulacion.cantidadCuotas,
             tipoInteres: simulacion.tipoInteres,
             frecuencia: simulacion.frecuencia,
@@ -69,7 +73,6 @@ export default async function SimulacionDetailPage({
               <TableHead>Vencimiento</TableHead>
               <TableHead>Capital</TableHead>
               <TableHead>Interés</TableHead>
-              <TableHead>IVA</TableHead>
               <TableHead>Total</TableHead>
             </TableRow>
           </TableHeader>
@@ -80,16 +83,23 @@ export default async function SimulacionDetailPage({
                 <TableCell>{cuota.fechaVencimiento.toLocaleDateString("es-AR")}</TableCell>
                 <TableCell>{formatMonto(cuota.montoCapital)}</TableCell>
                 <TableCell>{formatMonto(cuota.montoInteres)}</TableCell>
-                <TableCell>{formatMonto(descomponerIva(cuota.montoInteres).iva)}</TableCell>
                 <TableCell>{formatMonto(cuota.montoTotal)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Total a pagar: <span className="font-medium text-foreground">{formatMonto(totalCuotas)}</span>
-      </p>
+      <div className="space-y-1 text-sm text-muted-foreground">
+        {Number(simulacion.iva) > 0 && (
+          <p>
+            Monto financiado (incluye IVA {Number(simulacion.iva)}%):{" "}
+            <span className="font-medium text-foreground">{formatMonto(montoFinanciado)}</span>
+          </p>
+        )}
+        <p>
+          Total a pagar: <span className="font-medium text-foreground">{formatMonto(totalCuotas)}</span>
+        </p>
+      </div>
     </div>
   );
 }

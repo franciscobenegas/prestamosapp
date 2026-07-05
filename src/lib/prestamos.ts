@@ -15,6 +15,12 @@ export type GenerarCuotasInput = {
   monto: number;
   /** Tasa Nominal Anual (TNA), en porcentaje (ej. 10 = 10% anual). Se prorratea según la frecuencia de la cuota. */
   tasaInteres: number;
+  /**
+   * IVA sobre préstamos, en porcentaje (ej. 10 = 10%). Se financia sobre el capital
+   * (monto solicitado × (1 + iva/100)) antes de amortizar, igual que la AFD: si es 0,
+   * el cálculo es idéntico a no aplicar IVA.
+   */
+  iva?: number;
   cantidadCuotas: number;
   tipoInteres: TipoInteres;
   frecuencia: Frecuencia;
@@ -38,16 +44,6 @@ function periodosPorAnio(frecuencia: Frecuencia): number {
     case "MENSUAL":
       return 12;
   }
-}
-
-/** IVA sobre los intereses de préstamos (Paraguay: 10%), ya incluido dentro de `montoInteres`. */
-export const IVA_INTERES = 0.1;
-
-/** Descompone un interés (montoInteres ya calculado, IVA incluido) en su parte neta y el IVA. */
-export function descomponerIva(montoInteresConIva: number) {
-  const iva = Math.round((montoInteresConIva * IVA_INTERES) / (1 + IVA_INTERES));
-  const interesNeto = montoInteresConIva - iva;
-  return { interesNeto, iva };
 }
 
 function sumarPeriodo(fecha: Date, frecuencia: Frecuencia, cantidad: number): Date {
@@ -166,21 +162,23 @@ function generarCuotasSimple(
 }
 
 export function generarCuotas(input: GenerarCuotasInput): CuotaCalculada[] {
-  const { monto, tasaInteres, cantidadCuotas, tipoInteres, frecuencia, fechaInicio } = input;
+  const { monto, tasaInteres, iva = 0, cantidadCuotas, tipoInteres, frecuencia, fechaInicio } = input;
 
   if (cantidadCuotas < 1) {
     throw new Error("La cantidad de cuotas debe ser al menos 1");
   }
 
   const tasaPeriodica = tasaInteres / 100 / periodosPorAnio(frecuencia);
-  const montoRedondeado = round0(monto);
+  // El IVA se financia sobre el capital (igual que la AFD): si iva=0, el monto financiado
+  // es el mismo monto solicitado y el cálculo no cambia.
+  const montoFinanciado = round0(monto * (1 + iva / 100));
 
   switch (tipoInteres) {
     case "FRANCES":
-      return generarCuotasFrances(montoRedondeado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
+      return generarCuotasFrances(montoFinanciado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
     case "ALEMAN":
-      return generarCuotasAleman(montoRedondeado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
+      return generarCuotasAleman(montoFinanciado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
     case "SIMPLE":
-      return generarCuotasSimple(montoRedondeado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
+      return generarCuotasSimple(montoFinanciado, tasaPeriodica, cantidadCuotas, fechaInicio, frecuencia);
   }
 }

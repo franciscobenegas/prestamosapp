@@ -12,6 +12,7 @@ const prestamoSchema = z.object({
   clienteId: z.string().min(1, "Seleccioná un cliente"),
   monto: z.coerce.number().positive("El monto debe ser mayor a 0").transform(Math.round),
   tasaInteres: z.coerce.number().min(0, "La tasa no puede ser negativa"),
+  iva: z.coerce.number().min(0, "El IVA no puede ser negativo").max(100, "El IVA no puede superar 100%").default(0),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
   tipoInteres: z.enum(["FRANCES", "ALEMAN", "SIMPLE"]),
   frecuencia: z.enum(["DIARIA", "SEMANAL", "QUINCENAL", "MENSUAL"]),
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
   const cuotasCalculadas = generarCuotas({
     monto: data.monto,
     tasaInteres: data.tasaInteres,
+    iva: data.iva,
     cantidadCuotas: data.cantidadCuotas,
     tipoInteres: data.tipoInteres,
     frecuencia: data.frecuencia,
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
           usuarioId: cliente.usuarioId,
           monto: data.monto,
           tasaInteres: data.tasaInteres,
+          iva: data.iva,
           cantidadCuotas: data.cantidadCuotas,
           tipoInteres: data.tipoInteres,
           frecuencia: data.frecuencia,

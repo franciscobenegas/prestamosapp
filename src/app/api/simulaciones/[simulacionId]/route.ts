@@ -11,6 +11,7 @@ const simulacionUpdateSchema = z.object({
   clienteEmail: z.string().email().optional().or(z.literal("")),
   monto: z.coerce.number().positive().transform(Math.round).optional(),
   tasaInteres: z.coerce.number().min(0).optional(),
+  iva: z.coerce.number().min(0).max(100).optional(),
   cantidadCuotas: z.coerce.number().int().min(1).optional(),
   tipoInteres: z.enum(["FRANCES", "ALEMAN", "SIMPLE"]).optional(),
   frecuencia: z.enum(["DIARIA", "SEMANAL", "QUINCENAL", "MENSUAL"]).optional(),

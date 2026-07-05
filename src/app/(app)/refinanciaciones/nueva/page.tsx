@@ -27,6 +27,7 @@ export default async function NuevaRefinanciacionPage({
           clienteNombre: `${p.cliente.nombre} ${p.cliente.apellido}`,
           saldoPendiente: p.saldoPendiente,
           tasaInteres: Number(p.tasaInteres),
+          iva: Number(p.iva),
           tipoInteres: p.tipoInteres,
           frecuencia: p.frecuencia,
         }))}

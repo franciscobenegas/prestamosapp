@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const refinanciarSchema = z.object({
   tasaInteres: z.coerce.number().min(0, "La tasa no puede ser negativa"),
+  iva: z.coerce.number().min(0, "El IVA no puede ser negativo").max(100, "El IVA no puede superar 100%").default(0),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
   tipoInteres: z.enum(["FRANCES", "ALEMAN", "SIMPLE"]),
   frecuencia: z.enum(["DIARIA", "SEMANAL", "QUINCENAL", "MENSUAL"]),
@@ -59,6 +60,7 @@ export async function POST(
   const cuotasCalculadas = generarCuotas({
     monto: montoNuevo,
     tasaInteres: data.tasaInteres,
+    iva: data.iva,
     cantidadCuotas: data.cantidadCuotas,
     tipoInteres: data.tipoInteres,
     frecuencia: data.frecuencia,
@@ -73,6 +75,7 @@ export async function POST(
         usuarioId: prestamoAnterior.usuarioId,
         monto: montoNuevo,
         tasaInteres: data.tasaInteres,
+        iva: data.iva,
         cantidadCuotas: data.cantidadCuotas,
         tipoInteres: data.tipoInteres,
         frecuencia: data.frecuencia,

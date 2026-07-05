@@ -3,7 +3,6 @@ import Link from "next/link";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
 import { formatMonto } from "@/lib/format";
-import { descomponerIva } from "@/lib/prestamos";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -73,6 +72,7 @@ export default async function PrestamoDetailPage({
           <p className="text-sm text-muted-foreground">
             {formatMonto(Number(prestamo.monto))} en {prestamo.cantidadCuotas} cuotas ·{" "}
             {prestamo.tipoInteres} · {prestamo.frecuencia}
+            {Number(prestamo.iva) > 0 && <> · IVA {Number(prestamo.iva)}% financiado</>}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -125,7 +125,6 @@ export default async function PrestamoDetailPage({
               <TableHead>Vencimiento</TableHead>
               <TableHead>Capital</TableHead>
               <TableHead>Interés</TableHead>
-              <TableHead>IVA</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Pagado</TableHead>
               <TableHead>Estado</TableHead>
@@ -146,7 +145,6 @@ export default async function PrestamoDetailPage({
                   <TableCell>{cuota.fechaVencimiento.toLocaleDateString("es-AR")}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoCapital))}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoInteres))}</TableCell>
-                  <TableCell>{formatMonto(descomponerIva(Number(cuota.montoInteres)).iva)}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoTotal))}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoPagado))}</TableCell>
                   <TableCell>

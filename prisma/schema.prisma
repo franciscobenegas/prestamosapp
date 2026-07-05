@@ -119,6 +119,7 @@ model Prestamo {
   usuarioId      String
   monto          Decimal        @db.Decimal(12, 2)
   tasaInteres    Decimal        @db.Decimal(6, 3)
+  iva            Decimal        @default(0) @db.Decimal(5, 2)
   cantidadCuotas Int
   tipoInteres    TipoInteres
   frecuencia     Frecuencia
@@ -191,6 +192,7 @@ model Simulacion {
   clienteEmail   String?
   monto          Decimal     @db.Decimal(12, 2)
   tasaInteres    Decimal     @db.Decimal(6, 3)
+  iva            Decimal     @default(0) @db.Decimal(5, 2)
   cantidadCuotas Int
   tipoInteres    TipoInteres
   frecuencia     Frecuencia

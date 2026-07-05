@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
-import { generarCuotas, descomponerIva, type Frecuencia, type TipoInteres } from "@/lib/prestamos";
+import { generarCuotas, type Frecuencia, type TipoInteres } from "@/lib/prestamos";
 import { formatMonto } from "@/lib/format";
 
 const styles = StyleSheet.create({
@@ -42,6 +42,7 @@ export type SimulacionPdfData = {
   clienteEmail?: string | null;
   monto: number;
   tasaInteres: number;
+  iva: number;
   cantidadCuotas: number;
   tipoInteres: TipoInteres;
   frecuencia: Frecuencia;
@@ -55,6 +56,7 @@ export async function renderSimulacionPdf(simulacion: SimulacionPdfData) {
 function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
   const cuotas = generarCuotas(simulacion);
   const totalCuotas = cuotas.reduce((sum, c) => sum + c.montoTotal, 0);
+  const montoFinanciado = Math.round(simulacion.monto * (1 + simulacion.iva / 100));
 
   return (
     <Document>
@@ -86,6 +88,14 @@ function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
             <Text style={styles.label}>Tasa de interés anual (TNA)</Text>
             <Text style={styles.value}>{simulacion.tasaInteres}%</Text>
           </View>
+          {simulacion.iva > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.label}>IVA (financiado sobre el capital)</Text>
+              <Text style={styles.value}>
+                {simulacion.iva}% · Monto financiado: {formatMonto(montoFinanciado)}
+              </Text>
+            </View>
+          )}
           <View style={styles.row}>
             <Text style={styles.label}>Cantidad de cuotas</Text>
             <Text style={styles.value}>{simulacion.cantidadCuotas}</Text>
@@ -112,7 +122,6 @@ function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
               <Text style={styles.tableCell}>Vencimiento</Text>
               <Text style={styles.tableCell}>Capital</Text>
               <Text style={styles.tableCell}>Interés</Text>
-              <Text style={styles.tableCell}>IVA</Text>
               <Text style={styles.tableCell}>Total</Text>
             </View>
             {cuotas.map((cuota) => (
@@ -121,7 +130,6 @@ function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
                 <Text style={styles.tableCell}>{formatFecha(cuota.fechaVencimiento)}</Text>
                 <Text style={styles.tableCell}>{formatMonto(cuota.montoCapital)}</Text>
                 <Text style={styles.tableCell}>{formatMonto(cuota.montoInteres)}</Text>
-                <Text style={styles.tableCell}>{formatMonto(descomponerIva(cuota.montoInteres).iva)}</Text>
                 <Text style={styles.tableCell}>{formatMonto(cuota.montoTotal)}</Text>
               </View>
             ))}

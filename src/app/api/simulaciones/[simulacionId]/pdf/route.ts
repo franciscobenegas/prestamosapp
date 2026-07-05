@@ -25,6 +25,7 @@ export async function GET(
     clienteEmail: simulacion.clienteEmail,
     monto: Number(simulacion.monto),
     tasaInteres: Number(simulacion.tasaInteres),
+    iva: Number(simulacion.iva),
     cantidadCuotas: simulacion.cantidadCuotas,
     tipoInteres: simulacion.tipoInteres,
     frecuencia: simulacion.frecuencia,
