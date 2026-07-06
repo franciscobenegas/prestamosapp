@@ -62,5 +62,80 @@ export async function POST(request: NextRequest) {
     newValues: empresa,
   });
 
+  await enviarCorreoBienvenida(nuevo.email, nuevo.nombre);
+
   return NextResponse.json({ success: true }, { status: 201 });
+}
+
+async function enviarCorreoBienvenida(email: string, nombre: string) {
+  if (!process.env.BREVO_API_KEY) {
+    console.error("[REGISTRO] BREVO_API_KEY no está configurada, se omite el correo de bienvenida");
+    return;
+  }
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@prestosistema.com";
+  const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`;
+
+  try {
+    await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "PRESTO", email: senderEmail },
+        to: [{ email }],
+        subject: "¡Bienvenido a PRESTO!",
+        htmlContent: `
+<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background-color: #f9fafb;">
+  <div style="background-color: #ffffff; border-radius: 12px; padding: 32px; border: 1px solid #eee;">
+    <div style="text-align: center; margin-bottom: 8px;">
+      <span style="font-size: 40px;">🏦</span>
+    </div>
+    <h2 style="color: #1a1a1a; text-align: center; margin-top: 0;">¡Bienvenido a PRESTO!</h2>
+    <p style="color: #555; line-height: 1.5;">Hola <strong>${nombre}</strong>,</p>
+    <p style="color: #555; line-height: 1.5;">
+      Gracias por registrarte en <strong>PRESTO</strong>. Tu cuenta ya está lista para que empieces
+      a gestionar los préstamos de tu empresa de forma simple y ordenada.
+    </p>
+    <p style="color: #555; line-height: 1.5;">Con el sistema vas a poder gestionar:</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+      <tr>
+        <td style="padding: 10px 0; color: #555;">👤 <strong>Clientes</strong> — alta y seguimiento de tus clientes</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 0; color: #555;">💰 <strong>Préstamos</strong> — creación con cronograma de cuotas automático</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 0; color: #555;">🧾 <strong>Pagos</strong> — registro de cobros por cuota</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 0; color: #555;">📊 <strong>Reportes</strong> — cartera activa, morosidad y vencimientos</td>
+      </tr>
+    </table>
+    <p style="color: #555; line-height: 1.5;">
+      Cada pago registrado actualiza automáticamente el estado de las cuotas y préstamos, para que
+      siempre tengas un control preciso de tu cartera.
+    </p>
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${loginUrl}"
+         style="display: inline-block; padding: 12px 28px;
+                background-color: #16332a; color: white; text-decoration: none;
+                border-radius: 8px; font-weight: bold;">
+        Ingresar a PRESTO
+      </a>
+    </div>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+    <p style="color: #bbb; font-size: 12px; text-align: center;">
+      PRESTO — Gestión de Préstamos
+    </p>
+  </div>
+</div>`,
+      }),
+    });
+  } catch (error) {
+    console.error("[REGISTRO] Error al enviar correo de bienvenida:", error);
+  }
 }
