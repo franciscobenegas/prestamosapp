@@ -91,6 +91,17 @@ model Usuario {
   @@index([empresaId])
 }
 
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 model Cliente {
   id        String   @id @default(cuid())
   empresaId String
