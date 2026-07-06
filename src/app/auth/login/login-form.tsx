@@ -164,7 +164,7 @@ export function LoginForm({
       {...props}
     >
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Ingresá a tu cuenta 2222</h1>
+        <h1 className="text-2xl font-bold">Ingresá a tu cuenta</h1>
         <p className="text-balance text-sm text-muted-foreground">
           Ingresá tu email para acceder a la gestión de préstamos
         </p>
