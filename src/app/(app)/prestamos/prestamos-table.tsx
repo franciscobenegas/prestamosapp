@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, X } from "lucide-react";
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import { Eye, Plus, Search, X } from "lucide-react";
 import { formatMonto } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { FacetedFilter } from "@/components/faceted-filter";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { DataTableToolbarActions } from "@/components/data-table/data-table-toolbar-actions";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 
 type Prestamo = {
   id: string;
@@ -67,6 +74,73 @@ function withCounts(options: { label: string; value: string }[], counts: Record<
   return options.map((option) => ({ ...option, count: counts[option.value] ?? 0 }));
 }
 
+const columns: ColumnDef<Prestamo>[] = [
+  {
+    id: "cliente",
+    accessorFn: (row) => `${row.cliente.nombre} ${row.cliente.apellido}`,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cliente" />,
+    cell: ({ row }) => (
+      <Link href={`/clientes/${row.original.cliente.id}`} className="font-medium hover:underline">
+        {row.original.cliente.nombre} {row.original.cliente.apellido}
+      </Link>
+    ),
+    meta: { label: "Cliente" },
+  },
+  {
+    id: "monto",
+    accessorFn: (row) => Number(row.monto),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Monto" />,
+    cell: ({ row }) => formatMonto(row.original.monto),
+    meta: { label: "Monto" },
+  },
+  {
+    id: "cuotas",
+    accessorFn: (row) => row.cantidadCuotas,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cuotas" />,
+    meta: { label: "Cuotas" },
+  },
+  {
+    id: "tipo",
+    accessorFn: (row) => row.tipoInteres,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Tipo" />,
+    meta: { label: "Tipo" },
+  },
+  {
+    id: "frecuencia",
+    accessorFn: (row) => row.frecuencia,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Frecuencia" />,
+    meta: { label: "Frecuencia" },
+  },
+  {
+    id: "estado",
+    accessorFn: (row) => row.estado,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Estado" />,
+    cell: ({ row }) => <Badge variant={estadoVariant[row.original.estado]}>{row.original.estado}</Badge>,
+    meta: { label: "Estado" },
+  },
+  {
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <div className="text-right">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" asChild>
+              <Link href={`/prestamos/${row.original.id}`} aria-label="Ver préstamo">
+                <Eye className="size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ver préstamo</TooltipContent>
+        </Tooltip>
+      </div>
+    ),
+    meta: { exportable: false },
+  },
+];
+
 export function PrestamosTable({
   initialData,
   facetCounts,
@@ -79,6 +153,9 @@ export function PrestamosTable({
   const router = useRouter();
   const [query, setQuery] = useState(initialFilters.q);
   const [isPending, startTransition] = useTransition();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   // Lee la URL real al momento de ejecutarse (no un valor de searchParams capturado
   // por closure), para que un debounce de búsqueda que dispara tarde no pise un
@@ -120,6 +197,24 @@ export function PrestamosTable({
     router.push("/prestamos");
   }
 
+  const data = useMemo(() => initialData, [initialData]);
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [data]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, columnVisibility, pagination },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -158,62 +253,22 @@ export function PrestamosTable({
             </Button>
           )}
         </div>
-        <Button asChild>
-          <Link href="/prestamos/nuevo">
-            <Plus className="size-4" />
-            Nuevo préstamo
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <DataTableToolbarActions table={table} filename="prestamos" />
+          <Button asChild>
+            <Link href="/prestamos/nuevo">
+              <Plus className="size-4" />
+              Nuevo préstamo
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Cuotas</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Frecuencia</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  {isPending ? "Buscando..." : "No hay préstamos que coincidan con los filtros."}
-                </TableCell>
-              </TableRow>
-            )}
-            {initialData.map((prestamo) => (
-              <TableRow key={prestamo.id}>
-                <TableCell>
-                  <Link
-                    href={`/clientes/${prestamo.cliente.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {prestamo.cliente.nombre} {prestamo.cliente.apellido}
-                  </Link>
-                </TableCell>
-                <TableCell>{formatMonto(prestamo.monto)}</TableCell>
-                <TableCell>{prestamo.cantidadCuotas}</TableCell>
-                <TableCell>{prestamo.tipoInteres}</TableCell>
-                <TableCell>{prestamo.frecuencia}</TableCell>
-                <TableCell>
-                  <Badge variant={estadoVariant[prestamo.estado]}>{prestamo.estado}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/prestamos/${prestamo.id}`}>Ver</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        table={table}
+        emptyMessage={isPending ? "Buscando..." : "No hay préstamos que coincidan con los filtros."}
+      />
+      <DataTablePagination table={table} />
     </div>
   );
 }

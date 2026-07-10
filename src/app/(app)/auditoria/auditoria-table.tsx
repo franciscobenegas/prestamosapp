@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
 import { Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +31,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { DataTableToolbarActions } from "@/components/data-table/data-table-toolbar-actions";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { calcularCambios } from "@/lib/auditoria-diff";
 
 type Auditoria = {
@@ -67,6 +81,61 @@ function withCounts(options: { label: string; value: string }[], counts: Record<
   return options.map((option) => ({ ...option, count: counts[option.value] ?? 0 }));
 }
 
+function buildColumns(onVerCambios: (registro: Auditoria) => void): ColumnDef<Auditoria>[] {
+  return [
+    {
+      id: "fecha",
+      accessorFn: (row) => new Date(row.createdAt),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Fecha" />,
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleString("es-AR"),
+      meta: { label: "Fecha" },
+    },
+    {
+      id: "usuario",
+      accessorFn: (row) => row.usuario.nombre,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Usuario" />,
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.usuario.nombre}</div>
+          <div className="text-xs text-muted-foreground">{row.original.usuario.email}</div>
+        </div>
+      ),
+      meta: { label: "Usuario" },
+    },
+    {
+      id: "entidad",
+      accessorFn: (row) => tablaLabel[row.tabla] ?? row.tabla,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Entidad" />,
+      meta: { label: "Entidad" },
+    },
+    {
+      id: "accion",
+      accessorFn: (row) => accionLabel[row.accion] ?? row.accion,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Acción" />,
+      cell: ({ row }) => (
+        <Badge variant={accionVariant[row.original.accion]}>
+          {accionLabel[row.original.accion] ?? row.original.accion}
+        </Badge>
+      ),
+      meta: { label: "Acción" },
+    },
+    {
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <Button variant="ghost" size="sm" onClick={() => onVerCambios(row.original)}>
+            Ver cambios
+          </Button>
+        </div>
+      ),
+      meta: { exportable: false },
+    },
+  ];
+}
+
 export function AuditoriaTable({
   initialData,
   facetCounts,
@@ -80,6 +149,9 @@ export function AuditoriaTable({
   const [query, setQuery] = useState(initialFilters.q);
   const [isPending, startTransition] = useTransition();
   const [seleccionada, setSeleccionada] = useState<Auditoria | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   function updateParams(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(window.location.search);
@@ -119,80 +191,65 @@ export function AuditoriaTable({
     ? calcularCambios(seleccionada.oldValues, seleccionada.newValues)
     : [];
 
+  const data = useMemo(() => initialData, [initialData]);
+  const columns = useMemo(() => buildColumns((registro) => setSeleccionada(registro)), []);
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [data]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, columnVisibility, pagination },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-56">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar usuario..."
-            className="pl-8"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-56">
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar usuario..."
+              className="pl-8"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <FacetedFilter
+            title="Entidad"
+            options={withCounts(tablaOptions, facetCounts.tabla)}
+            selected={initialFilters.tabla}
+            onChange={(values) => setFacet("tabla", values)}
           />
+          <FacetedFilter
+            title="Acción"
+            options={withCounts(accionOptions, facetCounts.accion)}
+            selected={initialFilters.accion}
+            onChange={(values) => setFacet("accion", values)}
+          />
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Limpiar
+              <X className="size-4" />
+            </Button>
+          )}
         </div>
-        <FacetedFilter
-          title="Entidad"
-          options={withCounts(tablaOptions, facetCounts.tabla)}
-          selected={initialFilters.tabla}
-          onChange={(values) => setFacet("tabla", values)}
-        />
-        <FacetedFilter
-          title="Acción"
-          options={withCounts(accionOptions, facetCounts.accion)}
-          selected={initialFilters.accion}
-          onChange={(values) => setFacet("accion", values)}
-        />
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Limpiar
-            <X className="size-4" />
-          </Button>
-        )}
+        <DataTableToolbarActions table={table} filename="auditoria" />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Entidad</TableHead>
-              <TableHead>Acción</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  {isPending ? "Buscando..." : "No hay registros que coincidan con los filtros."}
-                </TableCell>
-              </TableRow>
-            )}
-            {initialData.map((registro) => (
-              <TableRow key={registro.id}>
-                <TableCell>{new Date(registro.createdAt).toLocaleString("es-AR")}</TableCell>
-                <TableCell>
-                  <div className="font-medium">{registro.usuario.nombre}</div>
-                  <div className="text-xs text-muted-foreground">{registro.usuario.email}</div>
-                </TableCell>
-                <TableCell>{tablaLabel[registro.tabla] ?? registro.tabla}</TableCell>
-                <TableCell>
-                  <Badge variant={accionVariant[registro.accion]}>
-                    {accionLabel[registro.accion] ?? registro.accion}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => setSeleccionada(registro)}>
-                    Ver cambios
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        table={table}
+        emptyMessage={isPending ? "Buscando..." : "No hay registros que coincidan con los filtros."}
+      />
+      <DataTablePagination table={table} />
 
       <Dialog open={Boolean(seleccionada)} onOpenChange={(open) => !open && setSeleccionada(null)}>
         <DialogContent className="max-w-2xl">

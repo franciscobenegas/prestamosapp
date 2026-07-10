@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
 import { Search, X } from "lucide-react";
 import { formatMonto } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FacetedFilter } from "@/components/faceted-filter";
 import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { DataTableToolbarActions } from "@/components/data-table/data-table-toolbar-actions";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 
 type Pago = {
   id: string;
@@ -45,6 +51,60 @@ function withCounts(options: { label: string; value: string }[], counts: Record<
   return options.map((option) => ({ ...option, count: counts[option.value] ?? 0 }));
 }
 
+const columns: ColumnDef<Pago>[] = [
+  {
+    id: "fecha",
+    accessorFn: (row) => new Date(row.fechaPago),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Fecha" />,
+    cell: ({ row }) => new Date(row.original.fechaPago).toLocaleString("es-AR"),
+    meta: { label: "Fecha" },
+  },
+  {
+    id: "cliente",
+    accessorFn: (row) => `${row.prestamo.cliente.nombre} ${row.prestamo.cliente.apellido}`,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cliente" />,
+    cell: ({ row }) => (
+      <Link href={`/clientes/${row.original.prestamo.cliente.id}`} className="hover:underline">
+        {row.original.prestamo.cliente.nombre} {row.original.prestamo.cliente.apellido}
+      </Link>
+    ),
+    meta: { label: "Cliente" },
+  },
+  {
+    id: "cuota",
+    accessorFn: (row) => row.cuota.numero,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cuota" />,
+    cell: ({ row }) => (
+      <Link href={`/prestamos/${row.original.prestamoId}`} className="hover:underline">
+        #{row.original.cuota.numero}
+      </Link>
+    ),
+    meta: { label: "Cuota" },
+  },
+  {
+    id: "monto",
+    accessorFn: (row) => Number(row.monto),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Monto" />,
+    cell: ({ row }) => formatMonto(row.original.monto),
+    meta: { label: "Monto" },
+  },
+  {
+    id: "metodo",
+    accessorFn: (row) => row.metodoPago,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Método" />,
+    meta: { label: "Método" },
+  },
+  {
+    id: "observacion",
+    accessorFn: (row) => row.observacion ?? "",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Observación" />,
+    cell: ({ row }) => (
+      <span className="block max-w-64 truncate">{row.original.observacion || "—"}</span>
+    ),
+    meta: { label: "Observación" },
+  },
+];
+
 export function PagosTable({
   initialData,
   facetCounts,
@@ -59,6 +119,9 @@ export function PagosTable({
   const router = useRouter();
   const [query, setQuery] = useState(initialFilters.q);
   const [isPending, startTransition] = useTransition();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   const dateRange: DateRange | undefined = initialFilters.desde
     ? {
@@ -113,85 +176,67 @@ export function PagosTable({
     router.push("/pagos");
   }
 
+  const data = useMemo(() => initialData, [initialData]);
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [data]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, columnVisibility, pagination },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-56">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar cliente..."
-            className="pl-8"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <DateRangeFilter value={dateRange} onChange={setDateRange} />
-        <FacetedFilter
-          title="Método de pago"
-          options={withCounts(metodoOptions, facetCounts.metodoPago)}
-          selected={initialFilters.metodo}
-          onChange={(values) => setFacet("metodo", values)}
-        />
-        {isAdmin && facetCounts.cobradores.length > 0 && (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-56">
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente..."
+              className="pl-8"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
           <FacetedFilter
-            title="Cobrador"
-            options={facetCounts.cobradores}
-            selected={initialFilters.cobrador}
-            onChange={(values) => setFacet("cobrador", values)}
+            title="Método de pago"
+            options={withCounts(metodoOptions, facetCounts.metodoPago)}
+            selected={initialFilters.metodo}
+            onChange={(values) => setFacet("metodo", values)}
           />
-        )}
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Limpiar
-            <X className="size-4" />
-          </Button>
-        )}
+          {isAdmin && facetCounts.cobradores.length > 0 && (
+            <FacetedFilter
+              title="Cobrador"
+              options={facetCounts.cobradores}
+              selected={initialFilters.cobrador}
+              onChange={(values) => setFacet("cobrador", values)}
+            />
+          )}
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Limpiar
+              <X className="size-4" />
+            </Button>
+          )}
+        </div>
+        <DataTableToolbarActions table={table} filename="pagos" />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Cuota</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Método</TableHead>
-              <TableHead>Observación</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  {isPending ? "Buscando..." : "No hay pagos que coincidan con los filtros."}
-                </TableCell>
-              </TableRow>
-            )}
-            {initialData.map((pago) => (
-              <TableRow key={pago.id}>
-                <TableCell>{new Date(pago.fechaPago).toLocaleString("es-AR")}</TableCell>
-                <TableCell>
-                  <Link
-                    href={`/clientes/${pago.prestamo.cliente.id}`}
-                    className="hover:underline"
-                  >
-                    {pago.prestamo.cliente.nombre} {pago.prestamo.cliente.apellido}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/prestamos/${pago.prestamoId}`} className="hover:underline">
-                    #{pago.cuota.numero}
-                  </Link>
-                </TableCell>
-                <TableCell>{formatMonto(pago.monto)}</TableCell>
-                <TableCell>{pago.metodoPago}</TableCell>
-                <TableCell className="max-w-64 truncate">{pago.observacion || "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        table={table}
+        emptyMessage={isPending ? "Buscando..." : "No hay pagos que coincidan con los filtros."}
+      />
+      <DataTablePagination table={table} />
     </div>
   );
 }

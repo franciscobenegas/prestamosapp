@@ -1,19 +1,26 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus } from "lucide-react";
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import { Eye, Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { DataTableToolbarActions } from "@/components/data-table/data-table-toolbar-actions";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { ClienteFormDialog } from "./cliente-form-dialog";
 
 type Cliente = {
@@ -25,6 +32,59 @@ type Cliente = {
   email: string | null;
   usuario: { id: string; nombre: string };
 };
+
+const columns: ColumnDef<Cliente>[] = [
+  {
+    id: "nombre",
+    accessorFn: (row) => `${row.nombre} ${row.apellido}`,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Nombre" />,
+    cell: ({ row }) => (
+      <Link href={`/clientes/${row.original.id}`} className="font-medium hover:underline">
+        {row.original.nombre} {row.original.apellido}
+      </Link>
+    ),
+    meta: { label: "Nombre" },
+  },
+  {
+    id: "documento",
+    accessorFn: (row) => row.documento,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Documento" />,
+    meta: { label: "Documento" },
+  },
+  {
+    id: "telefono",
+    accessorFn: (row) => row.telefono,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Teléfono" />,
+    meta: { label: "Teléfono" },
+  },
+  {
+    id: "cobrador",
+    accessorFn: (row) => row.usuario.nombre,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cobrador" />,
+    meta: { label: "Cobrador" },
+  },
+  {
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <div className="text-right">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" asChild>
+              <Link href={`/clientes/${row.original.id}`} aria-label="Ver cliente">
+                <Eye className="size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ver cliente</TooltipContent>
+        </Tooltip>
+      </div>
+    ),
+    meta: { exportable: false },
+  },
+];
 
 export function ClientesTable({
   initialData,
@@ -38,6 +98,9 @@ export function ClientesTable({
   const [query, setQuery] = useState(initialQuery);
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -52,6 +115,24 @@ export function ClientesTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  const data = useMemo(() => initialData, [initialData]);
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [data]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, columnVisibility, pagination },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -64,54 +145,20 @@ export function ClientesTable({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="size-4" />
-          Nuevo cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <DataTableToolbarActions table={table} filename="clientes" />
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="size-4" />
+            Nuevo cliente
+          </Button>
+        </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Documento</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Cobrador</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  {isPending ? "Buscando..." : "No hay clientes cargados."}
-                </TableCell>
-              </TableRow>
-            )}
-            {initialData.map((cliente) => (
-              <TableRow key={cliente.id}>
-                <TableCell>
-                  <Link
-                    href={`/clientes/${cliente.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {cliente.nombre} {cliente.apellido}
-                  </Link>
-                </TableCell>
-                <TableCell>{cliente.documento}</TableCell>
-                <TableCell>{cliente.telefono}</TableCell>
-                <TableCell>{cliente.usuario.nombre}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/clientes/${cliente.id}`}>Ver</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        table={table}
+        emptyMessage={isPending ? "Buscando..." : "No hay clientes cargados."}
+      />
+      <DataTablePagination table={table} />
 
       <ClienteFormDialog
         open={dialogOpen}

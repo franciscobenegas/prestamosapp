@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, X } from "lucide-react";
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import { Eye, Plus, Search, X } from "lucide-react";
 import { formatMonto } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { FacetedFilter } from "@/components/faceted-filter";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { DataTableToolbarActions } from "@/components/data-table/data-table-toolbar-actions";
+import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 
 type Simulacion = {
   id: string;
@@ -50,6 +57,76 @@ function withCounts(options: { label: string; value: string }[], counts: Record<
   return options.map((option) => ({ ...option, count: counts[option.value] ?? 0 }));
 }
 
+const columns: ColumnDef<Simulacion>[] = [
+  {
+    id: "cliente",
+    accessorFn: (row) => row.clienteNombre,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cliente" />,
+    cell: ({ row }) => (
+      <div>
+        <Link href={`/simulador/${row.original.id}`} className="font-medium hover:underline">
+          {row.original.clienteNombre}
+        </Link>
+        {row.original.clienteEmail && (
+          <div className="text-xs text-muted-foreground">{row.original.clienteEmail}</div>
+        )}
+      </div>
+    ),
+    meta: { label: "Cliente" },
+  },
+  {
+    id: "monto",
+    accessorFn: (row) => Number(row.monto),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Monto" />,
+    cell: ({ row }) => formatMonto(row.original.monto),
+    meta: { label: "Monto" },
+  },
+  {
+    id: "cuotas",
+    accessorFn: (row) => row.cantidadCuotas,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cuotas" />,
+    meta: { label: "Cuotas" },
+  },
+  {
+    id: "tipo",
+    accessorFn: (row) => row.tipoInteres,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Tipo" />,
+    cell: ({ row }) => (
+      <Badge variant={row.original.tipoInteres === "FRANCES" ? "default" : "secondary"}>
+        {row.original.tipoInteres}
+      </Badge>
+    ),
+    meta: { label: "Tipo" },
+  },
+  {
+    id: "frecuencia",
+    accessorFn: (row) => row.frecuencia,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Frecuencia" />,
+    meta: { label: "Frecuencia" },
+  },
+  {
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <div className="text-right">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8" asChild>
+              <Link href={`/simulador/${row.original.id}`} aria-label="Ver simulación">
+                <Eye className="size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ver simulación</TooltipContent>
+        </Tooltip>
+      </div>
+    ),
+    meta: { exportable: false },
+  },
+];
+
 export function SimulacionesTable({
   initialData,
   facetCounts,
@@ -62,6 +139,9 @@ export function SimulacionesTable({
   const router = useRouter();
   const [query, setQuery] = useState(initialFilters.q);
   const [isPending, startTransition] = useTransition();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
   function updateParams(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(window.location.search);
@@ -97,6 +177,24 @@ export function SimulacionesTable({
     router.push("/simulador");
   }
 
+  const data = useMemo(() => initialData, [initialData]);
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [data]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, columnVisibility, pagination },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -129,62 +227,22 @@ export function SimulacionesTable({
             </Button>
           )}
         </div>
-        <Button asChild>
-          <Link href="/simulador/nuevo">
-            <Plus className="size-4" />
-            Nueva simulación
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <DataTableToolbarActions table={table} filename="simulaciones" />
+          <Button asChild>
+            <Link href="/simulador/nuevo">
+              <Plus className="size-4" />
+              Nueva simulación
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Cuotas</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Frecuencia</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {initialData.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  {isPending ? "Buscando..." : "No hay simulaciones que coincidan con los filtros."}
-                </TableCell>
-              </TableRow>
-            )}
-            {initialData.map((simulacion) => (
-              <TableRow key={simulacion.id}>
-                <TableCell>
-                  <Link href={`/simulador/${simulacion.id}`} className="font-medium hover:underline">
-                    {simulacion.clienteNombre}
-                  </Link>
-                  {simulacion.clienteEmail && (
-                    <div className="text-xs text-muted-foreground">{simulacion.clienteEmail}</div>
-                  )}
-                </TableCell>
-                <TableCell>{formatMonto(simulacion.monto)}</TableCell>
-                <TableCell>{simulacion.cantidadCuotas}</TableCell>
-                <TableCell>
-                  <Badge variant={simulacion.tipoInteres === "FRANCES" ? "default" : "secondary"}>
-                    {simulacion.tipoInteres}
-                  </Badge>
-                </TableCell>
-                <TableCell>{simulacion.frecuencia}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/simulador/${simulacion.id}`}>Ver</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        table={table}
+        emptyMessage={isPending ? "Buscando..." : "No hay simulaciones que coincidan con los filtros."}
+      />
+      <DataTablePagination table={table} />
     </div>
   );
 }
