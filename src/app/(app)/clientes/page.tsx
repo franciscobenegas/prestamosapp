@@ -18,7 +18,7 @@ export default async function ClientesPage({
       <div>
         <h1 className="text-2xl font-semibold">Clientes</h1>
         <p className="text-sm text-muted-foreground">
-          Gestioná los clientes y su información de contacto.
+          Gestioná los clientes y su información de contacto en el sistema.
         </p>
       </div>
       <ClientesTable
