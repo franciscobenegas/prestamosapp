@@ -4,6 +4,7 @@ import { getUserFromToken } from "@/utils/getUserFromToken";
 import { getDashboardStats } from "@/lib/dashboard";
 import { formatMonto } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Wallet, Coins, CalendarCheck, AlertTriangle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,8 +33,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center justify-between text-sm font-bold text-muted-foreground">
               Cartera activa
+              <Wallet className="h-4 w-4" />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -45,8 +47,9 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center justify-between text-sm font-bold text-muted-foreground">
               Cobrado hoy
+              <Coins className="h-4 w-4" />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -55,8 +58,9 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center justify-between text-sm font-bold text-muted-foreground">
               Cobrado este mes
+              <CalendarCheck className="h-4 w-4" />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -65,8 +69,9 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center justify-between text-sm font-bold text-muted-foreground">
               Cuotas atrasadas
+              <AlertTriangle className="h-4 w-4" />
             </CardTitle>
           </CardHeader>
           <CardContent>
