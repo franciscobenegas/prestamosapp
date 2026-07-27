@@ -25,15 +25,24 @@ export default async function SimulacionDetailPage({
   if (!simulacion || simulacion.empresaId !== user.empresaId) notFound();
   if (user.rol === "COBRADOR" && simulacion.usuarioId !== user.usuarioId) notFound();
 
-  const cuotas = generarCuotas({
-    monto: Number(simulacion.monto),
-    tasaInteres: Number(simulacion.tasaInteres),
-    iva: Number(simulacion.iva),
-    cantidadCuotas: simulacion.cantidadCuotas,
-    tipoInteres: simulacion.tipoInteres,
-    frecuencia: simulacion.frecuencia,
-    fechaInicio: simulacion.fechaInicio,
-  });
+  const esInteresFijo = simulacion.interes !== null;
+  const cuotas = esInteresFijo
+    ? generarCuotas({
+        monto: Number(simulacion.monto),
+        interes: Number(simulacion.interes),
+        cantidadCuotas: simulacion.cantidadCuotas,
+        frecuencia: simulacion.frecuencia,
+        fechaInicio: simulacion.fechaInicio,
+      })
+    : generarCuotas({
+        monto: Number(simulacion.monto),
+        tasaInteres: Number(simulacion.tasaInteres),
+        iva: Number(simulacion.iva),
+        cantidadCuotas: simulacion.cantidadCuotas,
+        tipoInteres: simulacion.tipoInteres!,
+        frecuencia: simulacion.frecuencia,
+        fechaInicio: simulacion.fechaInicio,
+      });
   const montoFinanciado = Math.round(Number(simulacion.monto) * (1 + Number(simulacion.iva) / 100));
   const totalCuotas = cuotas.reduce((sum, c) => sum + c.montoTotal, 0);
 
@@ -44,8 +53,16 @@ export default async function SimulacionDetailPage({
           <h1 className="text-2xl font-semibold">Simulación para {simulacion.clienteNombre}</h1>
           <p className="text-sm text-muted-foreground">
             {formatMonto(Number(simulacion.monto))} en {simulacion.cantidadCuotas} cuotas ·{" "}
-            {simulacion.tipoInteres} · {simulacion.frecuencia}
-            {Number(simulacion.iva) > 0 && <> · IVA {Number(simulacion.iva)}% financiado</>}
+            {simulacion.frecuencia}
+            {esInteresFijo ? (
+              <> · Interés {formatMonto(Number(simulacion.interes))}</>
+            ) : (
+              <>
+                {" "}
+                · {simulacion.tipoInteres}
+                {Number(simulacion.iva) > 0 && <> · IVA {Number(simulacion.iva)}% financiado</>}
+              </>
+            )}
             {simulacion.clienteEmail && <> · {simulacion.clienteEmail}</>}
           </p>
         </div>
@@ -55,10 +72,8 @@ export default async function SimulacionDetailPage({
             clienteNombre: simulacion.clienteNombre,
             clienteEmail: simulacion.clienteEmail ?? "",
             monto: Number(simulacion.monto),
-            tasaInteres: Number(simulacion.tasaInteres),
-            iva: Number(simulacion.iva),
+            interes: Number(simulacion.interes ?? 0),
             cantidadCuotas: simulacion.cantidadCuotas,
-            tipoInteres: simulacion.tipoInteres,
             frecuencia: simulacion.frecuencia,
             fechaInicio: simulacion.fechaInicio.toISOString().slice(0, 10),
           }}
@@ -90,7 +105,7 @@ export default async function SimulacionDetailPage({
         </Table>
       </div>
       <div className="space-y-1 text-sm text-muted-foreground">
-        {Number(simulacion.iva) > 0 && (
+        {!esInteresFijo && Number(simulacion.iva) > 0 && (
           <p>
             Monto financiado (incluye IVA {Number(simulacion.iva)}%):{" "}
             <span className="font-medium text-foreground">{formatMonto(montoFinanciado)}</span>

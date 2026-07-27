@@ -36,7 +36,7 @@ export async function getSimulacionesFacetCounts(user: TokenPayload) {
   });
 
   return {
-    tipoInteres: toCountMap(porTipo.map((r) => ({ value: r.tipoInteres, count: r._count._all }))),
+    tipoInteres: toCountMap(porTipo.map((r) => ({ value: r.tipoInteres ?? "INTERES_FIJO", count: r._count._all }))),
     frecuencia: toCountMap(porFrecuencia.map((r) => ({ value: r.frecuencia, count: r._count._all }))),
   };
 }

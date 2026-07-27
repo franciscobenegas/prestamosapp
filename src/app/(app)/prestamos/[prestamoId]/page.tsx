@@ -71,8 +71,16 @@ export default async function PrestamoDetailPage({
           </h1>
           <p className="text-sm text-muted-foreground">
             {formatMonto(Number(prestamo.monto))} en {prestamo.cantidadCuotas} cuotas ·{" "}
-            {prestamo.tipoInteres} · {prestamo.frecuencia}
-            {Number(prestamo.iva) > 0 && <> · IVA {Number(prestamo.iva)}% financiado</>}
+            {prestamo.frecuencia}
+            {prestamo.interes !== null ? (
+              <> · Interés {formatMonto(Number(prestamo.interes))}</>
+            ) : (
+              <>
+                {" "}
+                · {prestamo.tipoInteres}
+                {Number(prestamo.iva) > 0 && <> · IVA {Number(prestamo.iva)}% financiado</>}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">

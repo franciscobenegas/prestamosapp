@@ -10,6 +10,7 @@ export const tipoInteresLabel: Record<string, string> = {
   FRANCES: "Francés",
   ALEMAN: "Alemán",
   SIMPLE: "Simple",
+  INTERES_FIJO: "Interés fijo",
 };
 
 export const frecuenciaLabel: Record<string, string> = {

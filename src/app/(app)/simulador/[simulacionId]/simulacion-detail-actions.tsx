@@ -13,10 +13,8 @@ type Simulacion = {
   clienteNombre: string;
   clienteEmail: string;
   monto: number;
-  tasaInteres: number;
-  iva: number;
+  interes: number;
   cantidadCuotas: number;
-  tipoInteres: "FRANCES" | "ALEMAN" | "SIMPLE";
   frecuencia: "DIARIA" | "SEMANAL" | "QUINCENAL" | "MENSUAL";
   fechaInicio: string;
 };

@@ -28,8 +28,9 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 type Prestamo = {
   id: string;
   monto: string;
+  interes: string | null;
   cantidadCuotas: number;
-  tipoInteres: string;
+  tipoInteres: string | null;
   frecuencia: string;
   estado: string;
   cliente: { id: string; nombre: string; apellido: string };
@@ -102,8 +103,10 @@ const columns: ColumnDef<Prestamo>[] = [
   {
     id: "tipo",
     accessorFn: (row) => row.tipoInteres,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Tipo" />,
-    meta: { label: "Tipo" },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Interés" />,
+    cell: ({ row }) =>
+      row.original.interes !== null ? formatMonto(row.original.interes) : row.original.tipoInteres,
+    meta: { label: "Interés" },
   },
   {
     id: "frecuencia",

@@ -99,7 +99,7 @@ export default async function ClienteDetailPage({
               <TableRow>
                 <TableHead>Monto</TableHead>
                 <TableHead>Cuotas</TableHead>
-                <TableHead>Tipo</TableHead>
+                <TableHead>Interés</TableHead>
                 <TableHead>Frecuencia</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead />
@@ -117,7 +117,9 @@ export default async function ClienteDetailPage({
                 <TableRow key={prestamo.id}>
                   <TableCell>{formatMonto(Number(prestamo.monto))}</TableCell>
                   <TableCell>{prestamo.cantidadCuotas}</TableCell>
-                  <TableCell>{prestamo.tipoInteres}</TableCell>
+                  <TableCell>
+                    {prestamo.interes !== null ? formatMonto(Number(prestamo.interes)) : prestamo.tipoInteres}
+                  </TableCell>
                   <TableCell>{prestamo.frecuencia}</TableCell>
                   <TableCell>
                     <Badge variant={estadoVariant[prestamo.estado]}>{prestamo.estado}</Badge>

@@ -11,7 +11,17 @@ export type CuotaCalculada = {
   montoTotal: number;
 };
 
-export type GenerarCuotasInput = {
+export type GenerarCuotasInputMontoFijo = {
+  monto: number;
+  /** Interés total del préstamo, como monto fijo en moneda (no porcentaje). Se reparte en partes iguales entre las cuotas. */
+  interes: number;
+  cantidadCuotas: number;
+  frecuencia: Frecuencia;
+  fechaInicio: Date;
+};
+
+/** Modo legado (TNA + IVA + tipo de interés), conservado solo para recalcular simulaciones/préstamos creados antes del cambio a interés fijo. */
+export type GenerarCuotasInputTasa = {
   monto: number;
   /** Tasa Nominal Anual (TNA), en porcentaje (ej. 10 = 10% anual). Se prorratea según la frecuencia de la cuota. */
   tasaInteres: number;
@@ -26,6 +36,8 @@ export type GenerarCuotasInput = {
   frecuencia: Frecuencia;
   fechaInicio: Date;
 };
+
+export type GenerarCuotasInput = GenerarCuotasInputMontoFijo | GenerarCuotasInputTasa;
 
 /** Los importes se manejan en una moneda sin decimales: se redondean a números enteros. */
 function round0(value: number) {
@@ -161,12 +173,49 @@ function generarCuotasSimple(
   return cuotas;
 }
 
-export function generarCuotas(input: GenerarCuotasInput): CuotaCalculada[] {
-  const { monto, tasaInteres, iva = 0, cantidadCuotas, tipoInteres, frecuencia, fechaInicio } = input;
+function generarCuotasMontoFijo(
+  monto: number,
+  interes: number,
+  cantidadCuotas: number,
+  fechaInicio: Date,
+  frecuencia: Frecuencia
+): CuotaCalculada[] {
+  const capitalPorCuota = monto / cantidadCuotas;
+  const interesPorCuota = interes / cantidadCuotas;
 
-  if (cantidadCuotas < 1) {
+  const cuotas: CuotaCalculada[] = [];
+  let capitalAcumulado = 0;
+  let interesAcumulado = 0;
+
+  for (let numero = 1; numero <= cantidadCuotas; numero++) {
+    const esUltima = numero === cantidadCuotas;
+    const montoCapital = esUltima ? round0(monto - capitalAcumulado) : round0(capitalPorCuota);
+    const montoInteres = esUltima ? round0(interes - interesAcumulado) : round0(interesPorCuota);
+    capitalAcumulado += montoCapital;
+    interesAcumulado += montoInteres;
+
+    cuotas.push({
+      numero,
+      fechaVencimiento: sumarPeriodo(fechaInicio, frecuencia, numero),
+      montoCapital,
+      montoInteres,
+      montoTotal: montoCapital + montoInteres,
+    });
+  }
+
+  return cuotas;
+}
+
+export function generarCuotas(input: GenerarCuotasInput): CuotaCalculada[] {
+  if (input.cantidadCuotas < 1) {
     throw new Error("La cantidad de cuotas debe ser al menos 1");
   }
+
+  if ("interes" in input) {
+    return generarCuotasMontoFijo(input.monto, input.interes, input.cantidadCuotas, input.fechaInicio, input.frecuencia);
+  }
+
+  const { monto, tasaInteres, iva = 0, cantidadCuotas, tipoInteres, frecuencia, fechaInicio } = input;
 
   const tasaPeriodica = tasaInteres / 100 / periodosPorAnio(frecuencia);
   // El IVA se financia sobre el capital (igual que la AFD): si iva=0, el monto financiado

@@ -40,10 +40,8 @@ const simulacionSchema = z.object({
   clienteNombre: z.string().min(1, "El nombre es obligatorio"),
   clienteEmail: z.string().email("Email inválido").optional().or(z.literal("")),
   monto: z.coerce.number().positive("El monto debe ser mayor a 0").transform(Math.round),
-  tasaInteres: z.coerce.number().min(0, "La tasa no puede ser negativa"),
-  iva: z.coerce.number().min(0, "El IVA no puede ser negativo").max(100, "El IVA no puede superar 100%"),
+  interes: z.coerce.number().min(0, "El interés no puede ser negativo").transform(Math.round),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
-  tipoInteres: z.enum(["FRANCES", "ALEMAN", "SIMPLE"]),
   frecuencia: z.enum(["DIARIA", "SEMANAL", "QUINCENAL", "MENSUAL"]),
   fechaInicio: z.string().min(1, "Obligatorio"),
 });
@@ -70,10 +68,8 @@ export function SimulacionForm({
       clienteNombre: defaultValues?.clienteNombre ?? "",
       clienteEmail: defaultValues?.clienteEmail ?? "",
       monto: defaultValues?.monto ?? 0,
-      tasaInteres: defaultValues?.tasaInteres ?? 10,
-      iva: defaultValues?.iva ?? 10,
+      interes: defaultValues?.interes ?? 0,
       cantidadCuotas: defaultValues?.cantidadCuotas ?? 6,
-      tipoInteres: defaultValues?.tipoInteres ?? "FRANCES",
       frecuencia: defaultValues?.frecuencia ?? "MENSUAL",
       fechaInicio: defaultValues?.fechaInicio ?? format(new Date(), "yyyy-MM-dd"),
     },
@@ -86,17 +82,15 @@ export function SimulacionForm({
     try {
       return generarCuotas({
         monto: Number(values.monto),
-        tasaInteres: Number(values.tasaInteres) || 0,
-        iva: Number(values.iva) || 0,
+        interes: Number(values.interes) || 0,
         cantidadCuotas: Number(values.cantidadCuotas),
-        tipoInteres: values.tipoInteres,
         frecuencia: values.frecuencia,
         fechaInicio: new Date(`${values.fechaInicio}T00:00:00`),
       });
     } catch {
       return [];
     }
-  }, [values.monto, values.tasaInteres, values.iva, values.cantidadCuotas, values.tipoInteres, values.frecuencia, values.fechaInicio]);
+  }, [values.monto, values.interes, values.cantidadCuotas, values.frecuencia, values.fechaInicio]);
 
   const totalCuotas = simulacion.reduce((s, c) => s + c.montoTotal, 0);
 
@@ -186,28 +180,20 @@ export function SimulacionForm({
             />
             <FormField
               control={form.control}
-              name="tasaInteres"
+              name="interes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tasa de interés anual - TNA (%)</FormLabel>
+                  <FormLabel>Interés</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" min="0" {...field} value={field.value as number} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="iva"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>IVA (%)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" min="0" max="100" {...field} value={field.value as number} />
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatMontoInput(field.value)}
+                      onChange={(e) => field.onChange(soloDigitos(e.target.value))}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -245,28 +231,6 @@ export function SimulacionForm({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="tipoInteres"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de interés</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="FRANCES">Francés (cuota fija)</SelectItem>
-                      <SelectItem value="ALEMAN">Alemán (capital fijo)</SelectItem>
-                      <SelectItem value="SIMPLE">Interés simple</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="frecuencia"
@@ -336,14 +300,6 @@ export function SimulacionForm({
           </div>
           {simulacion.length > 0 && (
             <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-              {Number(values.iva) > 0 && (
-                <p>
-                  Monto financiado (incluye IVA {Number(values.iva)}%):{" "}
-                  <span className="font-medium text-foreground">
-                    {formatMonto(Math.round(Number(values.monto) * (1 + Number(values.iva) / 100)))}
-                  </span>
-                </p>
-              )}
               <p>
                 Total a pagar: <span className="font-medium text-foreground">{formatMonto(totalCuotas)}</span>
               </p>

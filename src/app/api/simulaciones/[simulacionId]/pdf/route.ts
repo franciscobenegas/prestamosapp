@@ -24,10 +24,11 @@ export async function GET(
     clienteNombre: simulacion.clienteNombre,
     clienteEmail: simulacion.clienteEmail,
     monto: Number(simulacion.monto),
-    tasaInteres: Number(simulacion.tasaInteres),
+    interes: simulacion.interes !== null ? Number(simulacion.interes) : null,
+    tasaInteres: simulacion.tasaInteres !== null ? Number(simulacion.tasaInteres) : null,
     iva: Number(simulacion.iva),
-    cantidadCuotas: simulacion.cantidadCuotas,
     tipoInteres: simulacion.tipoInteres,
+    cantidadCuotas: simulacion.cantidadCuotas,
     frecuencia: simulacion.frecuencia,
     fechaInicio: simulacion.fechaInicio,
   });

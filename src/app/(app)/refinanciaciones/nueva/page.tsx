@@ -26,9 +26,7 @@ export default async function NuevaRefinanciacionPage({
           id: p.id,
           clienteNombre: `${p.cliente.nombre} ${p.cliente.apellido}`,
           saldoPendiente: p.saldoPendiente,
-          tasaInteres: Number(p.tasaInteres),
-          iva: Number(p.iva),
-          tipoInteres: p.tipoInteres,
+          interes: Number(p.interes ?? 0),
           frecuencia: p.frecuencia,
         }))}
         defaultPrestamoId={searchParams.prestamoId}

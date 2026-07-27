@@ -30,8 +30,9 @@ type Simulacion = {
   clienteNombre: string;
   clienteEmail: string | null;
   monto: string;
+  interes: string | null;
   cantidadCuotas: number;
-  tipoInteres: string;
+  tipoInteres: string | null;
   frecuencia: string;
 };
 
@@ -90,13 +91,16 @@ const columns: ColumnDef<Simulacion>[] = [
   {
     id: "tipo",
     accessorFn: (row) => row.tipoInteres,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Tipo" />,
-    cell: ({ row }) => (
-      <Badge variant={row.original.tipoInteres === "FRANCES" ? "default" : "secondary"}>
-        {row.original.tipoInteres}
-      </Badge>
-    ),
-    meta: { label: "Tipo" },
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Interés" />,
+    cell: ({ row }) =>
+      row.original.interes !== null ? (
+        formatMonto(row.original.interes)
+      ) : (
+        <Badge variant={row.original.tipoInteres === "FRANCES" ? "default" : "secondary"}>
+          {row.original.tipoInteres}
+        </Badge>
+      ),
+    meta: { label: "Interés" },
   },
   {
     id: "frecuencia",

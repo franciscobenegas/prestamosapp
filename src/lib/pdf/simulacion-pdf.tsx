@@ -41,10 +41,13 @@ export type SimulacionPdfData = {
   clienteNombre: string;
   clienteEmail?: string | null;
   monto: number;
-  tasaInteres: number;
-  iva: number;
+  /** Interés total fijo del préstamo. Si está presente, se usa el modo de reparto fijo (monto + interés / cuotas). */
+  interes?: number | null;
+  /** Campos del modo legado (TNA + IVA + tipo), usados solo cuando `interes` no está presente. */
+  tasaInteres?: number | null;
+  iva?: number | null;
+  tipoInteres?: TipoInteres | null;
   cantidadCuotas: number;
-  tipoInteres: TipoInteres;
   frecuencia: Frecuencia;
   fechaInicio: Date;
 };
@@ -54,9 +57,26 @@ export async function renderSimulacionPdf(simulacion: SimulacionPdfData) {
 }
 
 function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
-  const cuotas = generarCuotas(simulacion);
+  const esInteresFijo = simulacion.interes !== undefined && simulacion.interes !== null;
+  const cuotas = esInteresFijo
+    ? generarCuotas({
+        monto: simulacion.monto,
+        interes: simulacion.interes!,
+        cantidadCuotas: simulacion.cantidadCuotas,
+        frecuencia: simulacion.frecuencia,
+        fechaInicio: simulacion.fechaInicio,
+      })
+    : generarCuotas({
+        monto: simulacion.monto,
+        tasaInteres: simulacion.tasaInteres!,
+        iva: simulacion.iva ?? 0,
+        cantidadCuotas: simulacion.cantidadCuotas,
+        tipoInteres: simulacion.tipoInteres!,
+        frecuencia: simulacion.frecuencia,
+        fechaInicio: simulacion.fechaInicio,
+      });
   const totalCuotas = cuotas.reduce((sum, c) => sum + c.montoTotal, 0);
-  const montoFinanciado = Math.round(simulacion.monto * (1 + simulacion.iva / 100));
+  const montoFinanciado = Math.round(simulacion.monto * (1 + (simulacion.iva ?? 0) / 100));
 
   return (
     <Document>
@@ -84,26 +104,37 @@ function SimulacionPdf({ simulacion }: { simulacion: SimulacionPdfData }) {
             <Text style={styles.label}>Monto</Text>
             <Text style={styles.value}>{formatMonto(simulacion.monto)}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Tasa de interés anual (TNA)</Text>
-            <Text style={styles.value}>{simulacion.tasaInteres}%</Text>
-          </View>
-          {simulacion.iva > 0 && (
+          {esInteresFijo ? (
             <View style={styles.row}>
-              <Text style={styles.label}>IVA (financiado sobre el capital)</Text>
-              <Text style={styles.value}>
-                {simulacion.iva}% · Monto financiado: {formatMonto(montoFinanciado)}
-              </Text>
+              <Text style={styles.label}>Interés</Text>
+              <Text style={styles.value}>{formatMonto(simulacion.interes!)}</Text>
             </View>
+          ) : (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.label}>Tasa de interés anual (TNA)</Text>
+                <Text style={styles.value}>{simulacion.tasaInteres}%</Text>
+              </View>
+              {(simulacion.iva ?? 0) > 0 && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>IVA (financiado sobre el capital)</Text>
+                  <Text style={styles.value}>
+                    {simulacion.iva}% · Monto financiado: {formatMonto(montoFinanciado)}
+                  </Text>
+                </View>
+              )}
+            </>
           )}
           <View style={styles.row}>
             <Text style={styles.label}>Cantidad de cuotas</Text>
             <Text style={styles.value}>{simulacion.cantidadCuotas}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Tipo de interés</Text>
-            <Text style={styles.value}>{tipoInteresLabel[simulacion.tipoInteres]}</Text>
-          </View>
+          {!esInteresFijo && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Tipo de interés</Text>
+              <Text style={styles.value}>{tipoInteresLabel[simulacion.tipoInteres!]}</Text>
+            </View>
+          )}
           <View style={styles.row}>
             <Text style={styles.label}>Frecuencia</Text>
             <Text style={styles.value}>{frecuenciaLabel[simulacion.frecuencia]}</Text>

@@ -9,10 +9,8 @@ import { getSaldoPendiente } from "@/lib/refinanciaciones-queries";
 export const dynamic = "force-dynamic";
 
 const refinanciarSchema = z.object({
-  tasaInteres: z.coerce.number().min(0, "La tasa no puede ser negativa"),
-  iva: z.coerce.number().min(0, "El IVA no puede ser negativo").max(100, "El IVA no puede superar 100%").default(0),
+  interes: z.coerce.number().min(0, "El interés no puede ser negativo").transform(Math.round),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
-  tipoInteres: z.enum(["FRANCES", "ALEMAN", "SIMPLE"]),
   frecuencia: z.enum(["DIARIA", "SEMANAL", "QUINCENAL", "MENSUAL"]),
   fechaInicio: z.coerce.date(),
   montoAdicional: z.coerce.number().min(0, "No puede ser negativo").transform(Math.round).default(0),
@@ -59,10 +57,8 @@ export async function POST(
 
   const cuotasCalculadas = generarCuotas({
     monto: montoNuevo,
-    tasaInteres: data.tasaInteres,
-    iva: data.iva,
+    interes: data.interes,
     cantidadCuotas: data.cantidadCuotas,
-    tipoInteres: data.tipoInteres,
     frecuencia: data.frecuencia,
     fechaInicio: data.fechaInicio,
   });
@@ -74,10 +70,8 @@ export async function POST(
         clienteId: prestamoAnterior.clienteId,
         usuarioId: prestamoAnterior.usuarioId,
         monto: montoNuevo,
-        tasaInteres: data.tasaInteres,
-        iva: data.iva,
+        interes: data.interes,
         cantidadCuotas: data.cantidadCuotas,
-        tipoInteres: data.tipoInteres,
         frecuencia: data.frecuencia,
         fechaInicio: data.fechaInicio,
       },

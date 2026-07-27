@@ -50,7 +50,8 @@ export async function getReporteCartera(user: TokenPayload): Promise<ReporteCart
     estadoActual.monto += monto;
     porEstadoMap.set(prestamo.estado, estadoActual);
 
-    porTipoMap.set(prestamo.tipoInteres, (porTipoMap.get(prestamo.tipoInteres) ?? 0) + 1);
+    const tipo = prestamo.tipoInteres ?? "INTERES_FIJO";
+    porTipoMap.set(tipo, (porTipoMap.get(tipo) ?? 0) + 1);
     porFrecuenciaMap.set(prestamo.frecuencia, (porFrecuenciaMap.get(prestamo.frecuencia) ?? 0) + 1);
 
     if (prestamo.estado === "ACTIVO") {
