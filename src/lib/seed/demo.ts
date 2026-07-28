@@ -1,12 +1,12 @@
 import prisma from "@/libs/prisma";
 import { hashPassword } from "@/utils/hash";
-import { generarCuotas, type Frecuencia, type TipoInteres } from "@/lib/prestamos";
+import { generarCuotas, type Frecuencia } from "@/lib/prestamos";
 
 const ADMIN_EMAIL = "admin@prestamos.local";
 const ADMIN_PASSWORD = "admin123";
 
 type MetodoPago = "EFECTIVO" | "TRANSFERENCIA" | "OTRO";
-type EstadoPrestamoFinal = "ACTIVO" | "PAGADO" | "CANCELADO" | "REFINANCIADO";
+type EstadoPrestamoFinal = "ACTIVO" | "PAGADO" | "CANCELADO";
 
 function d(anio: number, mes: number, dia: number) {
   return new Date(anio, mes - 1, dia);
@@ -70,6 +70,30 @@ async function limpiarDatosDemo(empresaId: string) {
   await prisma.prestamo.deleteMany({ where: { empresaId } });
   await prisma.simulacion.deleteMany({ where: { empresaId } });
   await prisma.cliente.deleteMany({ where: { empresaId } });
+  await prisma.fuenteIngreso.deleteMany({ where: { empresaId } });
+}
+
+async function crearFuentesIngreso(empresaId: string) {
+  const [ganado, supermercado, compraVenta] = await Promise.all([
+    prisma.fuenteIngreso.create({
+      data: {
+        empresaId,
+        nombre: "Venta de Ganado",
+        descripcion: "Capital reinvertido de la venta de ganado",
+      },
+    }),
+    prisma.fuenteIngreso.create({
+      data: { empresaId, nombre: "Supermercado", descripcion: "Ingresos del supermercado" },
+    }),
+    prisma.fuenteIngreso.create({
+      data: {
+        empresaId,
+        nombre: "Compra/Venta",
+        descripcion: "Ingresos de compra y venta de mercadería",
+      },
+    }),
+  ]);
+  return { ganado, supermercado, compraVenta };
 }
 
 async function crearCliente(params: {
@@ -96,24 +120,22 @@ async function crearCliente(params: {
   });
 }
 
+/** Todos los préstamos de demo usan interés fijo (capital + monto de interés), el único modo que ofrece la app hoy. */
 async function crearPrestamo(params: {
   empresaId: string;
   usuarioId: string;
   clienteId: string;
+  fuenteIngresoId?: string;
   monto: number;
-  tasaInteres: number;
-  iva?: number;
+  interes: number;
   cantidadCuotas: number;
-  tipoInteres: TipoInteres;
   frecuencia: Frecuencia;
   fechaInicio: Date;
 }) {
   const cuotasCalculadas = generarCuotas({
     monto: params.monto,
-    tasaInteres: params.tasaInteres,
-    iva: params.iva ?? 0,
+    interes: params.interes,
     cantidadCuotas: params.cantidadCuotas,
-    tipoInteres: params.tipoInteres,
     frecuencia: params.frecuencia,
     fechaInicio: params.fechaInicio,
   });
@@ -123,11 +145,10 @@ async function crearPrestamo(params: {
       empresaId: params.empresaId,
       clienteId: params.clienteId,
       usuarioId: params.usuarioId,
+      fuenteIngresoId: params.fuenteIngresoId,
       monto: params.monto,
-      tasaInteres: params.tasaInteres,
-      iva: params.iva ?? 0,
+      interes: params.interes,
       cantidadCuotas: params.cantidadCuotas,
-      tipoInteres: params.tipoInteres,
       frecuencia: params.frecuencia,
       fechaInicio: params.fechaInicio,
     },
@@ -233,61 +254,6 @@ async function fijarEstadoPrestamo(prestamoId: string, estado: EstadoPrestamoFin
   await prisma.prestamo.update({ where: { id: prestamoId }, data: { estado } });
 }
 
-async function saldoPendiente(prestamoId: string) {
-  const cuotas = await prisma.cuota.findMany({
-    where: { prestamoId, estado: { not: "PAGADA" } },
-    select: { montoTotal: true, montoPagado: true },
-  });
-  return cuotas.reduce((sum, c) => sum + (Number(c.montoTotal) - Number(c.montoPagado)), 0);
-}
-
-async function refinanciar(params: {
-  empresaId: string;
-  usuarioId: string;
-  clienteId: string;
-  prestamoAnteriorId: string;
-  montoAdicional: number;
-  tasaInteres: number;
-  iva?: number;
-  cantidadCuotas: number;
-  tipoInteres: TipoInteres;
-  frecuencia: Frecuencia;
-  fechaInicio: Date;
-  observacion?: string;
-}) {
-  const saldo = await saldoPendiente(params.prestamoAnteriorId);
-  const montoNuevo = Math.round(saldo) + params.montoAdicional;
-
-  const { prestamo, cuotas } = await crearPrestamo({
-    empresaId: params.empresaId,
-    usuarioId: params.usuarioId,
-    clienteId: params.clienteId,
-    monto: montoNuevo,
-    tasaInteres: params.tasaInteres,
-    iva: params.iva,
-    cantidadCuotas: params.cantidadCuotas,
-    tipoInteres: params.tipoInteres,
-    frecuencia: params.frecuencia,
-    fechaInicio: params.fechaInicio,
-  });
-
-  await fijarEstadoPrestamo(params.prestamoAnteriorId, "REFINANCIADO");
-
-  await prisma.refinanciacion.create({
-    data: {
-      empresaId: params.empresaId,
-      prestamoAnteriorId: params.prestamoAnteriorId,
-      prestamoNuevoId: prestamo.id,
-      usuarioId: params.usuarioId,
-      saldoAnterior: saldo,
-      montoAdicional: params.montoAdicional,
-      observacion: params.observacion,
-    },
-  });
-
-  return { prestamo, cuotas };
-}
-
 async function main() {
   const admin = await getOrCreateAdmin();
   const empresaId = admin.empresaId;
@@ -298,6 +264,9 @@ async function main() {
   await limpiarDatosDemo(empresaId);
 
   const ctxBase = { empresaId, usuarioId };
+
+  console.log("Creando fuentes de ingreso...");
+  const fuentes = await crearFuentesIngreso(empresaId);
 
   console.log("Creando clientes...");
   const clientes = {
@@ -384,6 +353,56 @@ async function main() {
       telefono: "0990123456",
       direccion: "Asunción",
     }),
+    sofia: await crearCliente({
+      ...ctxBase,
+      nombre: "Sofía",
+      apellido: "Benítez",
+      documento: "2345678",
+      telefono: "0981112233",
+      direccion: "Villa Elisa",
+    }),
+    miguel: await crearCliente({
+      ...ctxBase,
+      nombre: "Miguel",
+      apellido: "Acosta",
+      documento: "3987654",
+      telefono: "0982223344",
+      direccion: "Itauguá",
+      email: "miguel.acosta@example.com",
+    }),
+    patricia: await crearCliente({
+      ...ctxBase,
+      nombre: "Patricia",
+      apellido: "Silva",
+      documento: "4234567",
+      telefono: "0983334455",
+      direccion: "Areguá",
+    }),
+    hugo: await crearCliente({
+      ...ctxBase,
+      nombre: "Hugo",
+      apellido: "Cantero",
+      documento: "2765432",
+      telefono: "0984445566",
+      direccion: "Limpio",
+    }),
+    valentina: await crearCliente({
+      ...ctxBase,
+      nombre: "Valentina",
+      apellido: "Godoy",
+      documento: "3567891",
+      telefono: "0985556677",
+      direccion: "San Antonio",
+      email: "valentina.godoy@example.com",
+    }),
+    fabian: await crearCliente({
+      ...ctxBase,
+      nombre: "Fabián",
+      apellido: "Insfrán",
+      documento: "4890234",
+      telefono: "0986667788",
+      direccion: "Villeta",
+    }),
   };
 
   console.log("Creando préstamos y su historial de cobros...");
@@ -393,11 +412,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.carlos.id,
+      fuenteIngresoId: fuentes.ganado.id,
       monto: 3_000_000,
-      tasaInteres: 36,
-      iva: 10,
+      interes: 600_000,
       cantidadCuotas: 6,
-      tipoInteres: "FRANCES",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 1, 15),
     });
@@ -409,10 +427,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.maria.id,
+      fuenteIngresoId: fuentes.supermercado.id,
       monto: 2_000_000,
-      tasaInteres: 30,
+      interes: 500_000,
       cantidadCuotas: 8,
-      tipoInteres: "SIMPLE",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 1, 5),
     });
@@ -426,10 +444,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.juan.id,
+      fuenteIngresoId: fuentes.compraVenta.id,
       monto: 1_500_000,
-      tasaInteres: 40,
+      interes: 450_000,
       cantidadCuotas: 10,
-      tipoInteres: "ALEMAN",
       frecuencia: "QUINCENAL",
       fechaInicio: d(2026, 1, 10),
     });
@@ -443,11 +461,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.ana.id,
+      fuenteIngresoId: fuentes.ganado.id,
       monto: 1_000_000,
-      tasaInteres: 24,
-      iva: 10,
+      interes: 150_000,
       cantidadCuotas: 4,
-      tipoInteres: "FRANCES",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 1, 1),
     });
@@ -461,9 +478,8 @@ async function main() {
       ...ctxBase,
       clienteId: clientes.pedro.id,
       monto: 1_800_000,
-      tasaInteres: 20,
+      interes: 180_000,
       cantidadCuotas: 6,
-      tipoInteres: "SIMPLE",
       frecuencia: "SEMANAL",
       fechaInicio: d(2026, 2, 1),
     });
@@ -476,10 +492,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.lucia.id,
+      fuenteIngresoId: fuentes.supermercado.id,
       monto: 2_500_000,
-      tasaInteres: 35,
+      interes: 750_000,
       cantidadCuotas: 12,
-      tipoInteres: "FRANCES",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 1, 20),
     });
@@ -492,10 +508,10 @@ async function main() {
     const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.diego.id,
+      fuenteIngresoId: fuentes.compraVenta.id,
       monto: 800_000,
-      tasaInteres: 30,
+      interes: 160_000,
       cantidadCuotas: 6,
-      tipoInteres: "ALEMAN",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 3, 1),
     });
@@ -503,65 +519,35 @@ async function main() {
     await fijarEstadoPrestamo(prestamo.id, "CANCELADO");
   }
 
-  // 8) Refinanciación: préstamo original con atraso, se refinancia con monto adicional.
+  // 8) Activo con atraso, monto grande.
   {
-    const { prestamo: original, cuotas } = await crearPrestamo({
+    const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.rosa.id,
+      fuenteIngresoId: fuentes.ganado.id,
       monto: 4_000_000,
-      tasaInteres: 38,
-      iva: 10,
+      interes: 1_200_000,
       cantidadCuotas: 10,
-      tipoInteres: "SIMPLE",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 1, 12),
     });
-    await pagarPrimeras(cuotas, 4, { ...ctxBase, prestamoId: original.id });
-    // cuotas 5 y 6 quedan vencidas sin pagar antes de refinanciar
-
-    const { prestamo: nuevo, cuotas: cuotasNuevo } = await refinanciar({
-      ...ctxBase,
-      clienteId: clientes.rosa.id,
-      prestamoAnteriorId: original.id,
-      montoAdicional: 500_000,
-      tasaInteres: 32,
-      iva: 10,
-      cantidadCuotas: 8,
-      tipoInteres: "FRANCES",
-      frecuencia: "MENSUAL",
-      fechaInicio: d(2026, 6, 15),
-      observacion: "Refinanciación por atraso, se otorga monto adicional solicitado por el cliente",
-    });
-    await pagarPrimeras(cuotasNuevo, 1, { ...ctxBase, prestamoId: nuevo.id });
+    await pagarPrimeras(cuotas, 4, { ...ctxBase, prestamoId: prestamo.id });
+    // el resto queda vencido y sin pagar
   }
 
-  // 9) Refinanciación #2.
+  // 9) Activo con atraso leve, frecuencia quincenal.
   {
-    const { prestamo: original, cuotas } = await crearPrestamo({
+    const { prestamo, cuotas } = await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.elena.id,
+      fuenteIngresoId: fuentes.supermercado.id,
       monto: 1_200_000,
-      tasaInteres: 33,
+      interes: 300_000,
       cantidadCuotas: 8,
-      tipoInteres: "FRANCES",
       frecuencia: "QUINCENAL",
       fechaInicio: d(2026, 1, 8),
     });
-    await pagarPrimeras(cuotas, 3, { ...ctxBase, prestamoId: original.id });
-
-    const { prestamo: nuevo, cuotas: cuotasNuevo } = await refinanciar({
-      ...ctxBase,
-      clienteId: clientes.elena.id,
-      prestamoAnteriorId: original.id,
-      montoAdicional: 200_000,
-      tasaInteres: 30,
-      cantidadCuotas: 6,
-      tipoInteres: "ALEMAN",
-      frecuencia: "MENSUAL",
-      fechaInicio: d(2026, 5, 20),
-      observacion: "Refinanciación de saldo pendiente",
-    });
-    await pagarPrimeras(cuotasNuevo, 2, { ...ctxBase, prestamoId: nuevo.id });
+    await pagarPrimeras(cuotas, 5, { ...ctxBase, prestamoId: prestamo.id });
   }
 
   // 10) Préstamo recién iniciado, sin cuotas vencidas todavía.
@@ -569,30 +555,139 @@ async function main() {
     await crearPrestamo({
       ...ctxBase,
       clienteId: clientes.ramon.id,
+      fuenteIngresoId: fuentes.compraVenta.id,
       monto: 1_500_000,
-      tasaInteres: 28,
+      interes: 300_000,
       cantidadCuotas: 6,
-      tipoInteres: "FRANCES",
       frecuencia: "MENSUAL",
       fechaInicio: d(2026, 7, 1),
     });
+  }
+
+  // 11) Pagado por completo, frecuencia diaria (préstamo corto).
+  {
+    const { prestamo, cuotas } = await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.sofia.id,
+      fuenteIngresoId: fuentes.ganado.id,
+      monto: 500_000,
+      interes: 50_000,
+      cantidadCuotas: 10,
+      frecuencia: "DIARIA",
+      fechaInicio: d(2026, 1, 5),
+    });
+    await pagarPrimeras(cuotas, cuotas.length, { ...ctxBase, prestamoId: prestamo.id });
+    await fijarEstadoPrestamo(prestamo.id, "PAGADO");
+  }
+
+  // 12) Activo al día, frecuencia quincenal.
+  {
+    const { prestamo, cuotas } = await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.miguel.id,
+      fuenteIngresoId: fuentes.supermercado.id,
+      monto: 2_200_000,
+      interes: 440_000,
+      cantidadCuotas: 8,
+      frecuencia: "QUINCENAL",
+      fechaInicio: d(2026, 2, 10),
+    });
+    await pagarPrimeras(cuotas, 5, { ...ctxBase, prestamoId: prestamo.id });
+  }
+
+  // 13) Activo con atraso moderado, monto grande.
+  {
+    const { prestamo, cuotas } = await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.patricia.id,
+      fuenteIngresoId: fuentes.compraVenta.id,
+      monto: 3_500_000,
+      interes: 700_000,
+      cantidadCuotas: 10,
+      frecuencia: "MENSUAL",
+      fechaInicio: d(2026, 1, 25),
+    });
+    await pagarPrimeras(cuotas, 2, { ...ctxBase, prestamoId: prestamo.id });
+    await pagarParcial(cuotas, 2, 0.5, { ...ctxBase, prestamoId: prestamo.id });
+  }
+
+  // 14) Cancelado casi sin pagos, sin categorizar.
+  {
+    const { prestamo, cuotas } = await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.hugo.id,
+      monto: 900_000,
+      interes: 180_000,
+      cantidadCuotas: 6,
+      frecuencia: "MENSUAL",
+      fechaInicio: d(2026, 4, 1),
+    });
+    await pagarPrimeras(cuotas, 1, { ...ctxBase, prestamoId: prestamo.id });
+    await fijarEstadoPrestamo(prestamo.id, "CANCELADO");
+  }
+
+  // 15) Recién iniciado, frecuencia semanal.
+  {
+    await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.valentina.id,
+      fuenteIngresoId: fuentes.ganado.id,
+      monto: 1_300_000,
+      interes: 260_000,
+      cantidadCuotas: 6,
+      frecuencia: "SEMANAL",
+      fechaInicio: d(2026, 7, 10),
+    });
+  }
+
+  // 16) Activo con atraso severo, monto grande.
+  {
+    const { prestamo, cuotas } = await crearPrestamo({
+      ...ctxBase,
+      clienteId: clientes.fabian.id,
+      fuenteIngresoId: fuentes.supermercado.id,
+      monto: 2_800_000,
+      interes: 840_000,
+      cantidadCuotas: 12,
+      frecuencia: "MENSUAL",
+      fechaInicio: d(2026, 1, 18),
+    });
+    await pagarPrimeras(cuotas, 2, { ...ctxBase, prestamoId: prestamo.id });
   }
 
   const totales = {
     clientes: await prisma.cliente.count({ where: { empresaId } }),
     prestamos: await prisma.prestamo.count({ where: { empresaId } }),
     pagos: await prisma.pago.count({ where: { empresaId } }),
-    refinanciaciones: await prisma.refinanciacion.count({ where: { empresaId } }),
   };
   const porEstado = await prisma.prestamo.groupBy({
     by: ["estado"],
     where: { empresaId },
     _count: { _all: true },
   });
+  const porFuente = await prisma.prestamo.groupBy({
+    by: ["fuenteIngresoId"],
+    where: { empresaId },
+    _count: { _all: true },
+  });
+  const nombreFuentePorId: Record<string, string> = {
+    [fuentes.ganado.id]: fuentes.ganado.nombre,
+    [fuentes.supermercado.id]: fuentes.supermercado.nombre,
+    [fuentes.compraVenta.id]: fuentes.compraVenta.nombre,
+  };
 
   console.log("\nDatos de demo cargados:");
   console.log(totales);
   console.log("Préstamos por estado:", Object.fromEntries(porEstado.map((r) => [r.estado, r._count._all])));
+  console.log(
+    "Préstamos por fuente de ingreso:",
+    Object.fromEntries(
+      porFuente.map((r) => [
+        r.fuenteIngresoId ? (nombreFuentePorId[r.fuenteIngresoId] ?? r.fuenteIngresoId) : "Sin categorizar",
+        r._count._all,
+      ])
+    )
+  );
   console.log(`\nIngresá con: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
 }
 

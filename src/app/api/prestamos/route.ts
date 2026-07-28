@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const prestamoSchema = z.object({
   clienteId: z.string().min(1, "Seleccioná un cliente"),
+  fuenteIngresoId: z.string().optional(),
   monto: z.coerce.number().positive("El monto debe ser mayor a 0").transform(Math.round),
   interes: z.coerce.number().min(0, "El interés no puede ser negativo").transform(Math.round),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
@@ -30,7 +31,10 @@ export async function GET(request: NextRequest) {
       ...(clienteId ? { clienteId } : {}),
       ...(estado ? { estado: estado as never } : {}),
     },
-    include: { cliente: { select: { id: true, nombre: true, apellido: true } } },
+    include: {
+      cliente: { select: { id: true, nombre: true, apellido: true } },
+      fuenteIngreso: { select: { id: true, nombre: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -57,6 +61,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
+  if (data.fuenteIngresoId) {
+    const fuente = await prisma.fuenteIngreso.findUnique({ where: { id: data.fuenteIngresoId } });
+    if (!fuente || fuente.empresaId !== user.empresaId) {
+      return NextResponse.json({ error: "Fuente de ingreso no encontrada" }, { status: 404 });
+    }
+  }
+
   const cuotasCalculadas = generarCuotas({
     monto: data.monto,
     interes: data.interes,
@@ -72,6 +83,7 @@ export async function POST(request: NextRequest) {
           empresaId: user.empresaId,
           clienteId: data.clienteId,
           usuarioId: cliente.usuarioId,
+          fuenteIngresoId: data.fuenteIngresoId,
           monto: data.monto,
           interes: data.interes,
           cantidadCuotas: data.cantidadCuotas,

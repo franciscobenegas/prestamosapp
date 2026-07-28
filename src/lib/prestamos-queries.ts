@@ -30,7 +30,10 @@ export async function getPrestamosForUser(user: TokenPayload, filters: Prestamos
           }
         : {}),
     },
-    include: { cliente: { select: { id: true, nombre: true, apellido: true } } },
+    include: {
+      cliente: { select: { id: true, nombre: true, apellido: true } },
+      fuenteIngreso: { select: { id: true, nombre: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }

@@ -28,6 +28,7 @@ import {
 import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
 import { formatMonto } from "@/lib/format";
 import { estadoPrestamoLabel, frecuenciaLabel, tipoInteresLabel } from "@/lib/labels";
+import { CategoriasDetalleTable } from "./categorias-detalle-table";
 
 const estadoVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   ACTIVO: "default",
@@ -45,6 +46,21 @@ type ReporteCartera = {
   porTipoInteres: { tipo: string; cantidad: number }[];
   porFrecuencia: { frecuencia: string; cantidad: number }[];
   porCobrador: { cobrador: string; prestamosActivos: number; carteraPendiente: number }[];
+};
+
+type ReporteCategorias = {
+  totalCapitalPrestado: number;
+  totalInteresGenerado: number;
+  categorias: {
+    fuenteIngresoId: string | null;
+    nombre: string;
+    cantidadPrestamos: number;
+    capitalPrestado: number;
+    interesGenerado: number;
+    totalCobrado: number;
+    carteraPendiente: number;
+    rendimiento: number;
+  }[];
 };
 
 type ReporteCobrosPorCobrador = {
@@ -112,8 +128,22 @@ function DescargarPdfButton({ href }: { href: string }) {
   );
 }
 
+type PrestamoDetalle = {
+  id: string;
+  monto: string;
+  interes: string | null;
+  estado: string;
+  frecuencia: string;
+  cantidadCuotas: number;
+  cliente: { id: string; nombre: string; apellido: string };
+  fuenteIngreso: { id: string; nombre: string } | null;
+};
+
 export function ReportesTabs({
   cartera,
+  categorias,
+  prestamosDetalle,
+  fuentesIngreso,
   cobrosPorCobrador,
   morosidad,
   proximosVencimientos,
@@ -122,6 +152,9 @@ export function ReportesTabs({
   rangoInicial,
 }: {
   cartera: ReporteCartera;
+  categorias: ReporteCategorias;
+  prestamosDetalle: PrestamoDetalle[];
+  fuentesIngreso: { id: string; nombre: string }[];
   cobrosPorCobrador: ReporteCobrosPorCobrador;
   morosidad: ReporteMorosidad;
   proximosVencimientos: ReporteProximosVencimientos;
@@ -154,6 +187,7 @@ export function ReportesTabs({
     <Tabs defaultValue={tabInicial} className="space-y-4">
       <TabsList>
         <TabsTrigger value="cartera">Cartera</TabsTrigger>
+        <TabsTrigger value="categorias">Categorías</TabsTrigger>
         <TabsTrigger value="cobros">Cobros por cobrador</TabsTrigger>
         <TabsTrigger value="morosidad">Morosidad</TabsTrigger>
         <TabsTrigger value="vencimientos">Próximos vencimientos</TabsTrigger>
@@ -254,6 +288,98 @@ export function ReportesTabs({
             </CardContent>
           </Card>
         )}
+      </TabsContent>
+
+      <TabsContent value="categorias" className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile label="Capital prestado" valor={formatMonto(categorias.totalCapitalPrestado)} />
+          <StatTile label="Interés generado" valor={formatMonto(categorias.totalInteresGenerado)} />
+        </div>
+
+        {categorias.categorias.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Capital prestado por categoría</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={categorias.categorias} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="nombre"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={56}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "hsl(var(--muted))" }}
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(value) => [formatMonto(Number(value)), "Capital prestado"]}
+                  />
+                  <Bar dataKey="capitalPrestado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Préstamos</TableHead>
+                <TableHead>Capital prestado</TableHead>
+                <TableHead>Interés generado</TableHead>
+                <TableHead>Cobrado</TableHead>
+                <TableHead>Cartera pendiente</TableHead>
+                <TableHead>Rendimiento</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categorias.categorias.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No hay préstamos cargados todavía.
+                  </TableCell>
+                </TableRow>
+              )}
+              {categorias.categorias.map((c) => (
+                <TableRow key={c.fuenteIngresoId ?? "sin-categoria"}>
+                  <TableCell className="font-medium">
+                    {c.fuenteIngresoId === null ? (
+                      <Badge variant="outline">Sin categorizar</Badge>
+                    ) : (
+                      c.nombre
+                    )}
+                  </TableCell>
+                  <TableCell>{c.cantidadPrestamos}</TableCell>
+                  <TableCell>{formatMonto(c.capitalPrestado)}</TableCell>
+                  <TableCell>{formatMonto(c.interesGenerado)}</TableCell>
+                  <TableCell>{formatMonto(c.totalCobrado)}</TableCell>
+                  <TableCell>{formatMonto(c.carteraPendiente)}</TableCell>
+                  <TableCell className="font-medium">{c.rendimiento.toFixed(1)}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-base font-medium">Detalle de préstamos</h3>
+          <CategoriasDetalleTable prestamos={prestamosDetalle} fuentesIngreso={fuentesIngreso} />
+        </div>
       </TabsContent>
 
       <TabsContent value="cobros" className="space-y-4">

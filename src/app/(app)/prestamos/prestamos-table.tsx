@@ -34,6 +34,7 @@ type Prestamo = {
   frecuencia: string;
   estado: string;
   cliente: { id: string; nombre: string; apellido: string };
+  fuenteIngreso: { id: string; nombre: string } | null;
 };
 
 type FacetCounts = {
@@ -113,6 +114,18 @@ const columns: ColumnDef<Prestamo>[] = [
     accessorFn: (row) => row.frecuencia,
     header: ({ column }) => <DataTableColumnHeader column={column} title="Frecuencia" />,
     meta: { label: "Frecuencia" },
+  },
+  {
+    id: "fuenteIngreso",
+    accessorFn: (row) => row.fuenteIngreso?.nombre ?? "",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Fuente de ingreso" />,
+    cell: ({ row }) =>
+      row.original.fuenteIngreso ? (
+        <Badge variant="outline">{row.original.fuenteIngreso.nombre}</Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+    meta: { label: "Fuente de ingreso" },
   },
   {
     id: "estado",

@@ -69,6 +69,7 @@ export async function POST(
         empresaId: user.empresaId,
         clienteId: prestamoAnterior.clienteId,
         usuarioId: prestamoAnterior.usuarioId,
+        fuenteIngresoId: prestamoAnterior.fuenteIngresoId,
         monto: montoNuevo,
         interes: data.interes,
         cantidadCuotas: data.cantidadCuotas,

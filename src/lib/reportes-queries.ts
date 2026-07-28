@@ -93,6 +93,95 @@ export async function getReporteCartera(user: TokenPayload): Promise<ReporteCart
   };
 }
 
+// ---------- Por categoría (fuente de ingreso) ----------
+
+export type ReporteCategoria = {
+  fuenteIngresoId: string | null;
+  nombre: string;
+  cantidadPrestamos: number;
+  capitalPrestado: number;
+  interesGenerado: number;
+  totalCobrado: number;
+  carteraPendiente: number;
+  rendimiento: number;
+};
+
+export type ReporteCategorias = {
+  totalCapitalPrestado: number;
+  totalInteresGenerado: number;
+  categorias: ReporteCategoria[];
+};
+
+const SIN_CATEGORIA_KEY = "SIN_CATEGORIA";
+
+export async function getReporteCategorias(user: TokenPayload): Promise<ReporteCategorias> {
+  const prestamos = await prisma.prestamo.findMany({
+    where: scopeUsuario(user),
+    select: {
+      fuenteIngresoId: true,
+      estado: true,
+      monto: true,
+      cuotas: { select: { estado: true, montoInteres: true, montoTotal: true, montoPagado: true } },
+    },
+  });
+
+  const porCategoriaMap = new Map<
+    string,
+    {
+      cantidadPrestamos: number;
+      capitalPrestado: number;
+      interesGenerado: number;
+      totalCobrado: number;
+      carteraPendiente: number;
+    }
+  >();
+
+  for (const prestamo of prestamos) {
+    const key = prestamo.fuenteIngresoId ?? SIN_CATEGORIA_KEY;
+    const actual = porCategoriaMap.get(key) ?? {
+      cantidadPrestamos: 0,
+      capitalPrestado: 0,
+      interesGenerado: 0,
+      totalCobrado: 0,
+      carteraPendiente: 0,
+    };
+    actual.cantidadPrestamos += 1;
+    actual.capitalPrestado += Number(prestamo.monto);
+
+    for (const cuota of prestamo.cuotas) {
+      actual.interesGenerado += Number(cuota.montoInteres);
+      actual.totalCobrado += Number(cuota.montoPagado);
+      if (prestamo.estado === "ACTIVO" && cuota.estado !== "PAGADA") {
+        actual.carteraPendiente += Number(cuota.montoTotal) - Number(cuota.montoPagado);
+      }
+    }
+
+    porCategoriaMap.set(key, actual);
+  }
+
+  const fuenteIds = Array.from(porCategoriaMap.keys()).filter((k) => k !== SIN_CATEGORIA_KEY);
+  const fuentes = await prisma.fuenteIngreso.findMany({
+    where: { id: { in: fuenteIds }, empresaId: user.empresaId },
+    select: { id: true, nombre: true },
+  });
+  const nombrePorId = new Map(fuentes.map((f) => [f.id, f.nombre]));
+
+  const categorias = Array.from(porCategoriaMap.entries())
+    .map(([key, v]) => ({
+      fuenteIngresoId: key === SIN_CATEGORIA_KEY ? null : key,
+      nombre: key === SIN_CATEGORIA_KEY ? "Sin categorizar" : (nombrePorId.get(key) ?? "—"),
+      ...v,
+      rendimiento: v.capitalPrestado > 0 ? (v.interesGenerado / v.capitalPrestado) * 100 : 0,
+    }))
+    .sort((a, b) => b.capitalPrestado - a.capitalPrestado);
+
+  return {
+    totalCapitalPrestado: categorias.reduce((sum, c) => sum + c.capitalPrestado, 0),
+    totalInteresGenerado: categorias.reduce((sum, c) => sum + c.interesGenerado, 0),
+    categorias,
+  };
+}
+
 // ---------- Cobros por cobrador ----------
 
 export type ReporteCobrosPorCobrador = {

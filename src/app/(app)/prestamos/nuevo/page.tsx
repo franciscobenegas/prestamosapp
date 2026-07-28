@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUserFromToken } from "@/utils/getUserFromToken";
 import { getClientesForUser } from "@/lib/clientes";
+import prisma from "@/libs/prisma";
 import { PrestamoForm } from "./prestamo-form";
 
 export default async function NuevoPrestamoPage({
@@ -12,6 +13,11 @@ export default async function NuevoPrestamoPage({
   if (!user) redirect("/auth/login");
 
   const clientes = await getClientesForUser(user);
+  const fuentesIngreso = await prisma.fuenteIngreso.findMany({
+    where: { empresaId: user.empresaId, activo: true },
+    select: { id: true, nombre: true },
+    orderBy: { nombre: "asc" },
+  });
 
   return (
     <div className="space-y-6">
@@ -26,6 +32,7 @@ export default async function NuevoPrestamoPage({
           id: c.id,
           nombre: `${c.nombre} ${c.apellido}`,
         }))}
+        fuentesIngreso={fuentesIngreso}
         defaultClienteId={searchParams.clienteId}
       />
     </div>

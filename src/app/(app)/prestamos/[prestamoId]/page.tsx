@@ -37,6 +37,7 @@ export default async function PrestamoDetailPage({
   const prestamo = await prisma.prestamo.findUnique({
     where: { id: params.prestamoId },
     include: {
+      fuenteIngreso: { select: { id: true, nombre: true } },
       refinanciacionComoAnterior: { include: { prestamoNuevo: true } },
       refinanciacionComoNuevo: {
         include: { prestamoAnterior: { include: { cliente: true } } },
@@ -84,6 +85,7 @@ export default async function PrestamoDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {prestamo.fuenteIngreso && <Badge variant="outline">{prestamo.fuenteIngreso.nombre}</Badge>}
           <Badge variant={estadoVariant[prestamo.estado]}>{prestamo.estado}</Badge>
           {puedeRefinanciar && (
             <Button variant="outline" size="sm" asChild>

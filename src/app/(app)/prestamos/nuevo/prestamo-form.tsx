@@ -33,11 +33,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePickerField } from "@/components/date-picker-field";
 import { generarCuotas } from "@/lib/prestamos";
 import { formatMonto, formatMontoInput, soloDigitos } from "@/lib/format";
 
+const SIN_FUENTE = "SIN_FUENTE";
+
 const prestamoSchema = z.object({
   clienteId: z.string().min(1, "Seleccioná un cliente"),
+  fuenteIngresoId: z.string().optional(),
   monto: z.coerce.number().positive("El monto debe ser mayor a 0").transform(Math.round),
   interes: z.coerce.number().min(0, "El interés no puede ser negativo").transform(Math.round),
   cantidadCuotas: z.coerce.number().int().min(1, "Debe haber al menos 1 cuota"),
@@ -50,9 +54,11 @@ type PrestamoOutput = z.output<typeof prestamoSchema>;
 
 export function PrestamoForm({
   clientes,
+  fuentesIngreso,
   defaultClienteId,
 }: {
   clientes: { id: string; nombre: string }[];
+  fuentesIngreso: { id: string; nombre: string }[];
   defaultClienteId?: string;
 }) {
   const router = useRouter();
@@ -62,6 +68,7 @@ export function PrestamoForm({
     resolver: zodResolver(prestamoSchema),
     defaultValues: {
       clienteId: defaultClienteId ?? "",
+      fuenteIngresoId: SIN_FUENTE,
       monto: 0,
       interes: 0,
       cantidadCuotas: 6,
@@ -95,7 +102,10 @@ export function PrestamoForm({
       const res = await fetch("/api/prestamos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          fuenteIngresoId: data.fuenteIngresoId === SIN_FUENTE ? undefined : data.fuenteIngresoId,
+        }),
       });
       const result = await res.json();
 
@@ -134,6 +144,32 @@ export function PrestamoForm({
                     {clientes.map((cliente) => (
                       <SelectItem key={cliente.id} value={cliente.id}>
                         {cliente.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="fuenteIngresoId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fuente de ingreso (opcional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin categorizar" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={SIN_FUENTE}>Sin categorizar</SelectItem>
+                    {fuentesIngreso.map((fuente) => (
+                      <SelectItem key={fuente.id} value={fuente.id}>
+                        {fuente.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -206,11 +242,12 @@ export function PrestamoForm({
               control={form.control}
               name="fechaInicio"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Fecha de inicio</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
+                  <DatePickerField
+                    value={field.value ? new Date(`${field.value}T00:00:00`) : undefined}
+                    onChange={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
