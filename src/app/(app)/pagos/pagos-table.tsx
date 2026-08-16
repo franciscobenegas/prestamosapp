@@ -178,6 +178,17 @@ export function PagosTable({
 
   const data = useMemo(() => initialData, [initialData]);
 
+  const resumen = useMemo(() => {
+    const porMetodo: Record<string, number> = { EFECTIVO: 0, TRANSFERENCIA: 0, OTRO: 0 };
+    let total = 0;
+    for (const p of data) {
+      const monto = Number(p.monto);
+      total += monto;
+      porMetodo[p.metodoPago] = (porMetodo[p.metodoPago] ?? 0) + monto;
+    }
+    return { total, cantidad: data.length, porMetodo };
+  }, [data]);
+
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [data]);
@@ -230,6 +241,34 @@ export function PagosTable({
           )}
         </div>
         <DataTableToolbarActions table={table} filename="pagos" />
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Cierre del día</h2>
+          <span className="text-xs text-muted-foreground">
+            Totaliza los pagos según los filtros aplicados{initialFilters.desde ? "" : " (usá el filtro de fecha para acotar al día)"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Total cobrado</p>
+            <p className="text-lg font-semibold">{formatMonto(resumen.total)}</p>
+            <p className="text-xs text-muted-foreground">{resumen.cantidad} pago(s)</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Efectivo</p>
+            <p className="text-lg font-semibold">{formatMonto(resumen.porMetodo.EFECTIVO)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Transferencia</p>
+            <p className="text-lg font-semibold">{formatMonto(resumen.porMetodo.TRANSFERENCIA)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Otro</p>
+            <p className="text-lg font-semibold">{formatMonto(resumen.porMetodo.OTRO)}</p>
+          </div>
+        </div>
       </div>
 
       <DataTable
