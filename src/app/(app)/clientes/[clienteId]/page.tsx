@@ -40,6 +40,7 @@ export default async function ClienteDetailPage({
 
   const prestamos = await prisma.prestamo.findMany({
     where: { clienteId: cliente.id },
+    include: { fuenteIngreso: { select: { id: true, nombre: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -101,6 +102,7 @@ export default async function ClienteDetailPage({
                 <TableHead>Cuotas</TableHead>
                 <TableHead>Interés</TableHead>
                 <TableHead>Frecuencia</TableHead>
+                <TableHead>Categoría</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead />
               </TableRow>
@@ -108,7 +110,7 @@ export default async function ClienteDetailPage({
             <TableBody>
               {prestamos.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Este cliente todavía no tiene préstamos.
                   </TableCell>
                 </TableRow>
@@ -121,6 +123,13 @@ export default async function ClienteDetailPage({
                     {prestamo.interes !== null ? formatMonto(Number(prestamo.interes)) : prestamo.tipoInteres}
                   </TableCell>
                   <TableCell>{prestamo.frecuencia}</TableCell>
+                  <TableCell>
+                    {prestamo.fuenteIngreso ? (
+                      <Badge variant="outline">{prestamo.fuenteIngreso.nombre}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={estadoVariant[prestamo.estado]}>{prestamo.estado}</Badge>
                   </TableCell>

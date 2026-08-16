@@ -132,6 +132,8 @@ type PrestamoDetalle = {
   id: string;
   monto: string;
   interes: string | null;
+  totalAPagar: number;
+  saldoPendiente: number;
   estado: string;
   frecuencia: string;
   cantidadCuotas: number;

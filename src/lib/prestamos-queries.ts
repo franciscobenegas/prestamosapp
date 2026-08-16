@@ -12,7 +12,7 @@ export type PrestamosFilters = {
 };
 
 export async function getPrestamosForUser(user: TokenPayload, filters: PrestamosFilters = {}) {
-  return prisma.prestamo.findMany({
+  const prestamos = await prisma.prestamo.findMany({
     where: {
       ...scopeEmpresa(user),
       ...(filters.estado?.length ? { estado: { in: filters.estado as never[] } } : {}),
@@ -33,8 +33,22 @@ export async function getPrestamosForUser(user: TokenPayload, filters: Prestamos
     include: {
       cliente: { select: { id: true, nombre: true, apellido: true } },
       fuenteIngreso: { select: { id: true, nombre: true } },
+      cuotas: { select: { montoTotal: true, montoPagado: true, estado: true } },
     },
     orderBy: { createdAt: "desc" },
+  });
+
+  // total = capital + interés (suma de montoTotal de las cuotas); saldo = lo que aún
+  // resta cobrar (cuotas no PAGADAS). Se strippean las cuotas para no engordar el payload.
+  return prestamos.map(({ cuotas, ...prestamo }) => {
+    const totalAPagar = cuotas.reduce((sum, c) => sum + Number(c.montoTotal), 0);
+    const saldoPendiente = cuotas.reduce(
+      (sum, c) => (c.estado !== "PAGADA" ? sum + (Number(c.montoTotal) - Number(c.montoPagado)) : sum),
+      0
+    );
+    const cuotasPagadas = cuotas.filter((c) => c.estado === "PAGADA").length;
+    const cuotasPendientes = cuotas.length - cuotasPagadas;
+    return { ...prestamo, totalAPagar, saldoPendiente, cuotasPagadas, cuotasPendientes };
   });
 }
 

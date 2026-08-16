@@ -33,6 +33,10 @@ type Prestamo = {
   tipoInteres: string | null;
   frecuencia: string;
   estado: string;
+  totalAPagar: number;
+  saldoPendiente: number;
+  cuotasPagadas: number;
+  cuotasPendientes: number;
   cliente: { id: string; nombre: string; apellido: string };
   fuenteIngreso: { id: string; nombre: string } | null;
 };
@@ -103,11 +107,37 @@ const columns: ColumnDef<Prestamo>[] = [
   },
   {
     id: "tipo",
-    accessorFn: (row) => row.tipoInteres,
+    accessorFn: (row) => (row.interes !== null ? Number(row.interes) : row.tipoInteres),
     header: ({ column }) => <DataTableColumnHeader column={column} title="Interés" />,
     cell: ({ row }) =>
       row.original.interes !== null ? formatMonto(row.original.interes) : row.original.tipoInteres,
     meta: { label: "Interés" },
+  },
+  {
+    id: "total",
+    accessorFn: (row) => row.totalAPagar,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
+    cell: ({ row }) => formatMonto(row.original.totalAPagar),
+    meta: { label: "Total" },
+  },
+  {
+    id: "saldo",
+    accessorFn: (row) => row.saldoPendiente,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Saldo" />,
+    cell: ({ row }) => formatMonto(row.original.saldoPendiente),
+    meta: { label: "Saldo" },
+  },
+  {
+    id: "cuotasPagadas",
+    accessorFn: (row) => row.cuotasPagadas,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cuotas pagadas" />,
+    meta: { label: "Cuotas pagadas" },
+  },
+  {
+    id: "cuotasPendientes",
+    accessorFn: (row) => row.cuotasPendientes,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Cuotas pendientes" />,
+    meta: { label: "Cuotas pendientes" },
   },
   {
     id: "frecuencia",

@@ -38,6 +38,7 @@ export async function GET(
 
   const prestamos = await prisma.prestamo.findMany({
     where: { clienteId: cliente.id },
+    include: { fuenteIngreso: { select: { id: true, nombre: true } } },
     orderBy: { createdAt: "desc" },
   });
 

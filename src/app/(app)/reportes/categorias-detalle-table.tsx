@@ -29,6 +29,8 @@ type PrestamoDetalle = {
   id: string;
   monto: string;
   interes: string | null;
+  totalAPagar: number;
+  saldoPendiente: number;
   estado: string;
   frecuencia: string;
   cantidadCuotas: number;
@@ -99,6 +101,20 @@ const columns: ColumnDef<PrestamoDetalle>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Interés" />,
     cell: ({ row }) => (row.original.interes !== null ? formatMonto(row.original.interes) : "—"),
     meta: { label: "Interés" },
+  },
+  {
+    id: "total",
+    accessorFn: (row) => row.totalAPagar,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Total" />,
+    cell: ({ row }) => formatMonto(row.original.totalAPagar),
+    meta: { label: "Total" },
+  },
+  {
+    id: "saldo",
+    accessorFn: (row) => row.saldoPendiente,
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Saldo" />,
+    cell: ({ row }) => formatMonto(row.original.saldoPendiente),
+    meta: { label: "Saldo" },
   },
   {
     id: "frecuencia",

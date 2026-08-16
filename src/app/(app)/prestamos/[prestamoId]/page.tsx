@@ -137,6 +137,7 @@ export default async function PrestamoDetailPage({
               <TableHead>Interés</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Pagado</TableHead>
+              <TableHead>Saldo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead />
             </TableRow>
@@ -157,6 +158,13 @@ export default async function PrestamoDetailPage({
                   <TableCell>{formatMonto(Number(cuota.montoInteres))}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoTotal))}</TableCell>
                   <TableCell>{formatMonto(Number(cuota.montoPagado))}</TableCell>
+                  <TableCell>
+                    {cuota.estado === "PARCIAL" ? (
+                      <span className="font-medium text-destructive">{formatMonto(pendiente)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <CuotaEstadoBadge estado={cuota.estado} fechaVencimiento={cuota.fechaVencimiento} hoy={hoy} />
                   </TableCell>
