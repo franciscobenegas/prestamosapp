@@ -22,6 +22,9 @@ export default async function CalendarioPage({
 
   const mesDeReferencia = parseMes(searchParams.mes);
   const cuotas = await getCuotasDelMes(user, mesDeReferencia);
+  // Se pasa como "yyyy-MM" (no ISO/UTC) para que el cliente lo parsee en hora local
+  // y la navegación de meses no dependa de la zona horaria del servidor (UTC en Vercel).
+  const mesParam = `${mesDeReferencia.getFullYear()}-${String(mesDeReferencia.getMonth() + 1).padStart(2, "0")}`;
 
   return (
     <div className="space-y-6">
@@ -32,7 +35,7 @@ export default async function CalendarioPage({
         </p>
       </div>
       <CalendarioCuotas
-        mesDeReferencia={mesDeReferencia.toISOString()}
+        mesDeReferencia={mesParam}
         cuotas={JSON.parse(JSON.stringify(cuotas))}
       />
     </div>

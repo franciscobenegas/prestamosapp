@@ -53,7 +53,12 @@ export function CalendarioCuotas({
   const router = useRouter();
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
   const hoy = new Date();
-  const mesActual = useMemo(() => new Date(mesDeReferencia), [mesDeReferencia]);
+  // mesDeReferencia llega como "yyyy-MM"; se parsea en hora local (no UTC) para que la
+  // navegación de meses sea correcta en Vercel (server UTC) igual que en local.
+  const mesActual = useMemo(() => {
+    const [year, month] = mesDeReferencia.split("-").map(Number);
+    return new Date(year, month - 1, 1);
+  }, [mesDeReferencia]);
 
   const dias = useMemo(() => {
     const inicioMes = startOfMonth(mesActual);
