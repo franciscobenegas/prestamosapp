@@ -171,7 +171,11 @@ export function PrestamoForm({
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                    <Command>
+                    <Command
+                      filter={(value, search) =>
+                        value.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
+                      }
+                    >
                       <CommandInput placeholder="Buscar cliente por nombre..." />
                       <CommandList>
                         <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>

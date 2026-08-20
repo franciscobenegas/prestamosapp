@@ -34,6 +34,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { generarCuotas } from "@/lib/prestamos";
 import { formatMonto, formatMontoInput, soloDigitos } from "@/lib/format";
 
@@ -67,6 +82,7 @@ export function RefinanciacionForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [prestamoOpen, setPrestamoOpen] = useState(false);
 
   const inicial = prestamos.find((p) => p.id === defaultPrestamoId) ?? prestamos[0];
 
@@ -87,7 +103,7 @@ export function RefinanciacionForm({
   const prestamoSeleccionado = prestamos.find((p) => p.id === values.prestamoId);
 
   function handlePrestamoChange(prestamoId: string) {
-    form.setValue("prestamoId", prestamoId);
+    form.setValue("prestamoId", prestamoId, { shouldValidate: true });
     const prestamo = prestamos.find((p) => p.id === prestamoId);
     if (prestamo) {
       form.setValue("interes", prestamo.interes);
@@ -158,26 +174,68 @@ export function RefinanciacionForm({
           <FormField
             control={form.control}
             name="prestamoId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Préstamo a refinanciar</FormLabel>
-                <Select onValueChange={handlePrestamoChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccioná un préstamo" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {prestamos.map((prestamo) => (
-                      <SelectItem key={prestamo.id} value={prestamo.id}>
-                        {prestamo.clienteNombre} — saldo {formatMonto(prestamo.saldoPendiente)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const seleccionado = prestamos.find((p) => p.id === field.value);
+              return (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Préstamo a refinanciar</FormLabel>
+                  <Popover open={prestamoOpen} onOpenChange={setPrestamoOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={prestamoOpen}
+                          className={cn(
+                            "w-full justify-between font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {seleccionado
+                            ? `${seleccionado.clienteNombre} — saldo ${formatMonto(seleccionado.saldoPendiente)}`
+                            : "Seleccioná un préstamo"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command
+                        filter={(value, search) =>
+                          value.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
+                        }
+                      >
+                        <CommandInput placeholder="Buscar por nombre de cliente..." />
+                        <CommandList>
+                          <CommandEmpty>No se encontró ningún préstamo.</CommandEmpty>
+                          <CommandGroup>
+                            {prestamos.map((prestamo) => (
+                              <CommandItem
+                                key={prestamo.id}
+                                value={`${prestamo.clienteNombre} ${formatMonto(prestamo.saldoPendiente)}`}
+                                onSelect={() => {
+                                  handlePrestamoChange(prestamo.id);
+                                  setPrestamoOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    prestamo.id === field.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {prestamo.clienteNombre} — saldo {formatMonto(prestamo.saldoPendiente)}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           {prestamoSeleccionado && (
