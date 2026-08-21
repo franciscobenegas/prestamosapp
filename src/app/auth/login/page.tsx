@@ -18,7 +18,7 @@ export default function LoginPage() {
       </div>
       <div className="relative hidden bg-muted lg:flex lg:items-center lg:justify-center">
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <Image src="/logo.png" alt="Gestión de Préstamos" width={360} height={112} priority />
+          <Image unoptimized src="/logo.svg" alt="Gestión de Préstamos" width={360} height={112} priority />
           <p className="text-sm">Clientes, préstamos, cuotas y cobros en un solo lugar.</p>
         </div>
       </div>
