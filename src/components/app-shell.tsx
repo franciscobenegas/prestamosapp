@@ -181,8 +181,8 @@ export function AppShell({
           >
             {!collapsed && (
               <span className="flex items-center gap-2 font-semibold">
-                <Image src="/icon-square.png" alt="" width={20} height={20} className="shrink-0 rounded-md" />
-                PRESTO
+                <Image unoptimized src="/icon-square.svg" alt="" width={40} height={40} className="shrink-0 rounded-md" />
+                RWS
               </span>
             )}
             <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleCollapsed}>
@@ -201,8 +201,8 @@ export function AppShell({
           <SheetContent side="left" className="flex w-60 flex-col gap-0 p-0">
             <SheetHeader className="h-16 flex-row items-center justify-start space-y-0 border-b px-4">
               <SheetTitle className="flex items-center gap-2 text-base font-semibold">
-                <Image src="/icon-square.png" alt="" width={20} height={20} className="shrink-0 rounded-md" />
-                PRESTO
+                <Image unoptimized src="/icon-square.svg" alt="" width={40} height={40} className="shrink-0 rounded-md" />
+                RWS
               </SheetTitle>
             </SheetHeader>
             <SidebarNav
@@ -222,8 +222,8 @@ export function AppShell({
                 <Menu className="size-5" />
               </Button>
               <div className="flex items-center gap-2 font-semibold">
-                <Image src="/icon-square.png" alt="" width={20} height={20} className="rounded-md" />
-                PRESTO
+                <Image unoptimized src="/icon-square.svg" alt="" width={40} height={40} className="rounded-md" />
+                RWS
               </div>
             </div>
             <ThemeToggle collapsed />
