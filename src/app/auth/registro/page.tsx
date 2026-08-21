@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { LogoRws } from "@/components/logo-rws";
 import { RegistroForm } from "./registro-form";
 
 export default function RegistroPage() {
@@ -19,7 +20,7 @@ export default function RegistroPage() {
       </div>
       <div className="relative hidden bg-muted lg:flex lg:items-center lg:justify-center">
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <Image unoptimized src="/logo.svg" alt="Gestión de Préstamos" width={360} height={112} priority />
+          <LogoRws />
           <p className="text-sm">Clientes, préstamos, cuotas y cobros en un solo lugar.</p>
         </div>
       </div>
