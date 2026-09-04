@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/libs/prisma";
 import { getUserFromToken } from "@/utils/getUserFromToken";
-import { auditUpdate } from "@/utils/auditoria";
+import { auditDelete, auditUpdate } from "@/utils/auditoria";
 
 export const dynamic = "force-dynamic";
 
@@ -41,4 +41,39 @@ export async function PUT(
   );
 
   return NextResponse.json(actualizada);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { fuenteIngresoId: string } }
+) {
+  const user = getUserFromToken();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (user.rol !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  const existente = await prisma.fuenteIngreso.findUnique({ where: { id: params.fuenteIngresoId } });
+  if (!existente || existente.empresaId !== user.empresaId) {
+    return NextResponse.json({ error: "Fuente de ingreso no encontrada" }, { status: 404 });
+  }
+
+  const cantidadPrestamos = await prisma.prestamo.count({
+    where: { fuenteIngresoId: existente.id },
+  });
+  if (cantidadPrestamos > 0) {
+    return NextResponse.json(
+      { error: "No se puede eliminar una fuente de ingreso con préstamos asociados" },
+      { status: 409 }
+    );
+  }
+
+  await auditDelete(
+    "FuenteIngreso",
+    user.empresaId,
+    user.usuarioId,
+    existente.id,
+    () => prisma.fuenteIngreso.findUnique({ where: { id: existente.id } }),
+    () => prisma.fuenteIngreso.delete({ where: { id: existente.id } })
+  );
+
+  return NextResponse.json({ success: true });
 }

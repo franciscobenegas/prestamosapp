@@ -79,6 +79,7 @@ export function PrestamoForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [clienteOpen, setClienteOpen] = useState(false);
+  const [fuenteOpen, setFuenteOpen] = useState(false);
 
   const form = useForm<PrestamoValues, unknown, PrestamoOutput>({
     resolver: zodResolver(prestamoSchema),
@@ -214,23 +215,83 @@ export function PrestamoForm({
             control={form.control}
             name="fuenteIngresoId"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Fuente de ingreso (opcional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sin categorizar" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={SIN_FUENTE}>Sin categorizar</SelectItem>
-                    {fuentesIngreso.map((fuente) => (
-                      <SelectItem key={fuente.id} value={fuente.id}>
-                        {fuente.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={fuenteOpen} onOpenChange={setFuenteOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={fuenteOpen}
+                        className={cn(
+                          "w-full justify-between font-normal",
+                          (!field.value || field.value === SIN_FUENTE) &&
+                            "text-muted-foreground"
+                        )}
+                      >
+                        {field.value && field.value !== SIN_FUENTE
+                          ? fuentesIngreso.find((f) => f.id === field.value)?.nombre
+                          : "Sin categorizar"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command
+                      filter={(value, search) =>
+                        value.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
+                      }
+                    >
+                      <CommandInput placeholder="Buscar fuente de ingreso..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontró ninguna fuente.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="Sin categorizar"
+                            onSelect={() => {
+                              form.setValue("fuenteIngresoId", SIN_FUENTE, {
+                                shouldValidate: true,
+                              });
+                              setFuenteOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !field.value || field.value === SIN_FUENTE
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            Sin categorizar
+                          </CommandItem>
+                          {fuentesIngreso.map((fuente) => (
+                            <CommandItem
+                              key={fuente.id}
+                              value={fuente.nombre}
+                              onSelect={() => {
+                                form.setValue("fuenteIngresoId", fuente.id, {
+                                  shouldValidate: true,
+                                });
+                                setFuenteOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  fuente.id === field.value ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {fuente.nombre}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
