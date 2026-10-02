@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Ban } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function PrestamoActions({
@@ -18,23 +18,33 @@ export function PrestamoActions({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  if (estado === "CANCELADO" || estado === "PAGADO" || estado === "REFINANCIADO") return null;
+  // No se muestra el botón si el préstamo ya está finalizado...
+  if (
+    estado === "ELIMINADO" ||
+    estado === "CANCELADO" ||
+    estado === "PAGADO" ||
+    estado === "REFINANCIADO"
+  ) {
+    return null;
+  }
+  // ...ni si alguna cuota ya tiene un pago registrado.
+  if (tienePagos) return null;
 
-  async function handleCancelar() {
-    if (!confirm("¿Cancelar este préstamo? Esta acción no se puede deshacer.")) return;
+  async function handleEliminar() {
+    if (!confirm("¿Eliminar este préstamo? Esta acción no se puede deshacer.")) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/prestamos/${prestamoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: "CANCELADO" }),
+        body: JSON.stringify({ estado: "ELIMINADO" }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(typeof data.error === "string" ? data.error : "No se pudo cancelar");
+        toast.error(typeof data.error === "string" ? data.error : "No se pudo eliminar");
         return;
       }
-      toast.success("Préstamo cancelado");
+      toast.success("Préstamo eliminado");
       router.refresh();
     } catch {
       toast.error("Error de conexión con el servidor");
@@ -44,15 +54,9 @@ export function PrestamoActions({
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleCancelar}
-      disabled={loading || tienePagos}
-      title={tienePagos ? "No se puede cancelar: ya tiene pagos registrados" : undefined}
-    >
-      <Ban className="size-4" />
-      Cancelar
+    <Button variant="destructive" size="sm" onClick={handleEliminar} disabled={loading}>
+      <Trash2 className="size-4" />
+      Eliminar
     </Button>
   );
 }
