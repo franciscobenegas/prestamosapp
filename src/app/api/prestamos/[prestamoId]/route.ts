@@ -7,7 +7,7 @@ import { auditDelete, auditUpdate } from "@/utils/auditoria";
 export const dynamic = "force-dynamic";
 
 const prestamoUpdateSchema = z.object({
-  estado: z.enum(["ACTIVO", "PAGADO", "ATRASADO", "CANCELADO", "ELIMINADO"]),
+  estado: z.enum(["ACTIVO", "PAGADO", "ATRASADO", "CANCELADO", "RECHAZADO"]),
 });
 
 async function getPrestamoScoped(prestamoId: string, user: TokenPayload) {

@@ -4,7 +4,7 @@ export const estadoPrestamoLabel: Record<string, string> = {
   ATRASADO: "Atrasado",
   CANCELADO: "Cancelado",
   REFINANCIADO: "Refinanciado",
-  ELIMINADO: "Eliminado",
+  RECHAZADO: "Rechazado",
 };
 
 export const tipoInteresLabel: Record<string, string> = {

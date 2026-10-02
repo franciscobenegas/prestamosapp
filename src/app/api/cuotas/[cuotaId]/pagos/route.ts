@@ -33,11 +33,11 @@ export async function POST(
   }
   if (
     prestamo.estado === "CANCELADO" ||
-    prestamo.estado === "ELIMINADO" ||
+    prestamo.estado === "RECHAZADO" ||
     prestamo.estado === "REFINANCIADO"
   ) {
     return NextResponse.json(
-      { error: "No se pueden registrar pagos en un préstamo eliminado, cancelado o refinanciado" },
+      { error: "No se pueden registrar pagos en un préstamo rechazado, cancelado o refinanciado" },
       { status: 409 }
     );
   }

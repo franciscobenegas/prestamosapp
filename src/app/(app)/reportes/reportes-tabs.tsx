@@ -36,7 +36,7 @@ const estadoVariant: Record<string, "default" | "secondary" | "destructive" | "o
   ATRASADO: "destructive",
   CANCELADO: "outline",
   REFINANCIADO: "outline",
-  ELIMINADO: "destructive",
+  RECHAZADO: "destructive",
 };
 
 type ReporteCartera = {

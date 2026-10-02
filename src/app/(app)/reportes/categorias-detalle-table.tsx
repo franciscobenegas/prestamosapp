@@ -44,7 +44,7 @@ const estadoVariant: Record<string, "default" | "secondary" | "destructive" | "o
   ATRASADO: "destructive",
   CANCELADO: "outline",
   REFINANCIADO: "outline",
-  ELIMINADO: "destructive",
+  RECHAZADO: "destructive",
 };
 
 const estadoOptions = [
@@ -53,7 +53,7 @@ const estadoOptions = [
   { label: "Atrasado", value: "ATRASADO" },
   { label: "Cancelado", value: "CANCELADO" },
   { label: "Refinanciado", value: "REFINANCIADO" },
-  { label: "Eliminado", value: "ELIMINADO" },
+  { label: "Rechazado", value: "RECHAZADO" },
 ];
 
 function withCounts(options: { label: string; value: string }[], counts: Record<string, number>) {
