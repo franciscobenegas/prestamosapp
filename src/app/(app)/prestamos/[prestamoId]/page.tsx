@@ -24,7 +24,6 @@ const estadoVariant: Record<string, "default" | "secondary" | "destructive" | "o
   ATRASADO: "destructive",
   CANCELADO: "outline",
   REFINANCIADO: "outline",
-  ELIMINADO: "destructive",
 };
 
 export default async function PrestamoDetailPage({
@@ -149,7 +148,6 @@ export default async function PrestamoDetailPage({
               const puedeCobrar =
                 cuota.estado !== "PAGADA" &&
                 prestamo.estado !== "CANCELADO" &&
-                prestamo.estado !== "ELIMINADO" &&
                 prestamo.estado !== "PAGADO" &&
                 prestamo.estado !== "REFINANCIADO";
               return (

@@ -31,13 +31,9 @@ export async function POST(
   if (user.rol === "COBRADOR" && prestamo.usuarioId !== user.usuarioId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
-  if (
-    prestamo.estado === "CANCELADO" ||
-    prestamo.estado === "ELIMINADO" ||
-    prestamo.estado === "REFINANCIADO"
-  ) {
+  if (prestamo.estado === "CANCELADO" || prestamo.estado === "REFINANCIADO") {
     return NextResponse.json(
-      { error: "No se pueden registrar pagos en un préstamo eliminado, cancelado o refinanciado" },
+      { error: "No se pueden registrar pagos en un préstamo cancelado o refinanciado" },
       { status: 409 }
     );
   }
